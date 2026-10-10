@@ -1,0 +1,15 @@
+# build output
+/target/
+/dist/
+/build/
+/site/
+# language tooling
+node_modules/
+.venv/
+__pycache__/
+*.pyc
+# editors / OS
+.DS_Store
+*.swp
+.idea/
+.vscode/

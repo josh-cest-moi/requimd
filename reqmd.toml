@@ -1,0 +1,65 @@
+# reqmd configuration. Makes this repository a reqmd project (dogfooding).
+
+[project]
+include = ["requirements/**/*.md"]
+glossary = "requirements/glossary.md"
+
+[ids]
+digits = 3
+
+[types.usecase]
+prefix = "UC"
+meta = ["actor"]
+body = ["pre", "post", "trigger"]
+
+[types.functional]
+prefix = "FR"
+meta = ["check", "sev"]     # project-specific keys used by the check FRs
+
+[types.quality]
+prefix = "NFR"
+meta = ["scale", "meter", "must", "plan"]
+required = ["scale", "meter", "must|plan"]
+
+[types.rule]
+prefix = "BR"
+meta = ["src"]
+
+[types.story]
+prefix = "US"
+body = ["ac"]
+
+[types.test]
+prefix = "TC"
+
+[links.impl]
+name = "implements"
+to = ["usecase", "step"]
+
+[links.ref]
+name = "refines"
+
+[links.ver]
+name = "verifies"
+to = ["functional", "quality", "story"]
+
+[fields]
+meta = ["status", "prio"]   # allowed on every item type
+
+[values]
+status = ["draft", "review", "approved", "deprecated"]
+prio = ["must", "should", "could", "wont"]
+sev = ["error", "warning", "info", "off"]
+
+[defaults]
+status = "draft"
+
+[checks]
+# Severity overrides by check id, e.g.:
+# uncovered-step = "info"
+
+# Language checks (FR-110, FR-118, FR-119). Without `words`, the built-in
+# default lists apply. Example:
+# [checks.weak-word]
+# words = [{ w = "seamless", why = "marketing word; describe the behaviour" }]
+# allow = ["Fast Track"]

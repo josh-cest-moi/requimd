@@ -1,0 +1,4 @@
+# Glossary
+
+## Cart
+alias: basket

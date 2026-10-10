@@ -1,0 +1,7 @@
+[project]
+glossary = "glossary.md"
+
+[types.quality]
+prefix = "NFR"
+meta = ["scale", "meter", "must", "plan"]
+required = ["scale", "must|plan"]
