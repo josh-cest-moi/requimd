@@ -9,6 +9,12 @@ prints one line per diagnostic in the form
 if no errors were found, 1 if errors were found, and 2 on a configuration or
 usage error.
 
+The project root is searched from the first path, or from the current
+directory if no path is given (FR-013). The whole project is always loaded,
+so references into other files resolve; the paths only select the files
+whose diagnostics are printed. Paths that belong to different projects are
+a usage error.
+
 ## FR-301 Machine-readable output
 impl: UC-003.s3  prio: must
 

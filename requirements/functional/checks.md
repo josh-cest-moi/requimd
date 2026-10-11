@@ -16,14 +16,16 @@ impl: UC-001.s2a, UC-003.s3  prio: must  check: dangling-ref  sev: error
 
 If a link or mention refers to an item or step that does not exist, the
 system shall report a diagnostic at the reference. For mentions, the default
-severity is warning.
+severity is warning. A severity configured for `dangling-ref` (FR-117)
+applies to links and mentions alike.
 
 ## FR-102 Unknown metadata key
 impl: UC-003.s3  prio: must  check: unknown-key  sev: warning
 
 If a line directly after an item heading starts with an identifier and a
 colon that is not a configured key for the item type, the system shall
-report a diagnostic that names the allowed keys.
+report a diagnostic that names the allowed keys. Body field keys of the
+item type (FR-005) are not reported; such a line is a body field.
 
 ## FR-103 Invalid value
 impl: UC-003.s3  prio: must  check: invalid-value  sev: error

@@ -148,6 +148,26 @@ example.
 impl: UC-007.s1  prio: must
 
 Where a configuration section is missing, the system shall use built-in
-defaults: item types UC, FR, NFR, BR, US and TC; link keys `impl`, `ref`
-and `ver`; metadata keys `status` and `prio` with their value sets; and all
-Markdown files below the project root as include pattern.
+defaults: all Markdown files below the project root as include pattern, and
+the item types, link types, fields, value sets and defaults of the reference
+`reqmd.toml` at the repository root, without the project-specific keys
+`check` and `sev` and the value set `sev`. In short:
+
+| Type | Prefix | Metadata keys | Body fields | Required |
+|------|--------|---------------|-------------|----------|
+| usecase | UC | `actor` | `pre`, `post`, `trigger` | |
+| functional | FR | | | |
+| quality | NFR | `scale`, `meter`, `must`, `plan` | | `scale`, `meter`, `must\|plan` |
+| rule | BR | `src` | | |
+| story | US | | `ac` | |
+| test | TC | | | |
+
+Every type also allows `status` (`draft`, `review`, `approved`,
+`deprecated`, default `draft`) and `prio` (`must`, `should`, `could`,
+`wont`). Link types: `impl` to use cases and steps, `ref` to any item or
+step, `ver` to functional and quality requirements and stories. IDs have at
+least 3 digits.
+
+Project configuration is merged with the defaults per entry: an entry such
+as `[types.quality]`, `[links.impl]` or a key in `[values]` replaces the
+default entry of the same name completely; all other default entries stay.
