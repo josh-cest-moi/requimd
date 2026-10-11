@@ -140,8 +140,8 @@ impl: UC-003.s2, UC-003.s2a  prio: must
 The system shall locate the project root by searching for `reqmd.toml` in
 the start directory and its parents. From this file it shall read include
 patterns, glossary path, item types with prefix, allowed and required keys,
-link types with allowed target types, value sets, defaults and check
-settings. The file `reqmd.toml` at the repository root is the reference
+link types with allowed target types, value sets, defaults, check settings
+and language server settings. The file `reqmd.toml` at the repository root is the reference
 example.
 
 ## FR-014 Configuration defaults

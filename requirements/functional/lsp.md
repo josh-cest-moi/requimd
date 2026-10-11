@@ -40,7 +40,8 @@ impl: UC-002.s3  prio: must
 When the cursor is on a reference, the language server shall show on hover
 the ID, type, status and title of the target, and its text up to a
 configurable length. For a step reference it shows the step text; for a
-glossary term, its definition.
+glossary term, its definition. The length is set in characters by
+`hover-length` in the `[lsp]` section of `reqmd.toml`, default 500.
 
 ## FR-206 Go to definition
 impl: UC-002.s4  prio: must
@@ -58,7 +59,8 @@ item or step under the cursor.
 impl: UC-002.s2  prio: must
 
 The language server shall answer go-to-implementation on a use case or step
-with all items that link to it with `impl`.
+with all items that link to it with `impl`. For a use case, this includes
+items that link to any of its steps.
 
 ## FR-209 Inlay hints
 impl: UC-002.s3  prio: should
