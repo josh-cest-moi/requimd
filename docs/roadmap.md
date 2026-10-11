@@ -2,7 +2,7 @@
 
 Each milestone lists the requirements in scope. A milestone is done when
 all its `must` items are implemented, each has a test containing its ID
-(NFR-010), and `reqmd check` passes on this repository once available.
+(NFR-010), and `requimd check` passes on this repository once available.
 
 ## M0 Specification (done)
 
@@ -11,7 +11,7 @@ Spec in `requirements/`, decisions in `docs/decisions/`. Rust chosen
 
 ## M1 Parser and check command (implemented; NFR-004 awaits the first CI run)
 
-Goal: `reqmd check` validates this repository and the examples in CI.
+Goal: `requimd check` validates this repository and the examples in CI.
 
 - Prerequisite: ADR-0003 (Markdown parser) confirmed
 - Setup: cargo workspace, CI workflow per ADR-0004

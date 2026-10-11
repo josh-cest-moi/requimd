@@ -4,8 +4,8 @@
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
-use reqmd_checks::check;
-use reqmd_core::{Config, Diagnostic, Project, Severity, SourceFile};
+use requimd_checks::check;
+use requimd_core::{Config, Diagnostic, Project, Severity, SourceFile};
 
 fn project_with(config: &str, files: &[(&str, &str)]) -> Project {
     let config = Config::from_toml(config, None).unwrap();
@@ -387,7 +387,7 @@ fn fr_119_project_allow_list() {
 
 #[test]
 fn fr_119_inline_markers_and_unused_entries() {
-    let t = "## FR-001 X\n\nThe Fast Track page shall load. <!-- reqmd: allow fast -->\nIt shall be easy and should work. <!-- reqmd: allow quick, should -->\n";
+    let t = "## FR-001 X\n\nThe Fast Track page shall load. <!-- requimd: allow fast -->\nIt shall be easy and should work. <!-- requimd: allow quick, should -->\n";
     assert_eq!(
         language("", t),
         [(4, "weak-word", Warning), (4, "unused-allow", Warning),]
@@ -396,7 +396,7 @@ fn fr_119_inline_markers_and_unused_entries() {
 
 #[test]
 fn fr_119_markers_in_code_are_ignored() {
-    let t = "## FR-001 X\n\nThe system shall do it.\n\n```markdown\nFast. <!-- reqmd: allow fast -->\n```\n";
+    let t = "## FR-001 X\n\nThe system shall do it.\n\n```markdown\nFast. <!-- requimd: allow fast -->\n```\n";
     assert_eq!(language("", t), []);
 }
 

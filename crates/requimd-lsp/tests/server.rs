@@ -7,7 +7,7 @@ use std::thread::JoinHandle;
 use std::time::{Duration, Instant};
 
 use lsp_server::{Connection, Message, Notification, Request, RequestId};
-use reqmd_lsp::convert::path_to_uri;
+use requimd_lsp::convert::path_to_uri;
 use serde_json::{Value, json};
 
 struct Client {
@@ -24,7 +24,7 @@ impl Client {
     fn start(root: &Path, capabilities: Value) -> (Client, Value) {
         let (server_conn, conn) = Connection::memory();
         let server = std::thread::spawn(move || {
-            reqmd_lsp::run(&server_conn).unwrap();
+            requimd_lsp::run(&server_conn).unwrap();
         });
         let mut c = Client {
             conn,
@@ -129,11 +129,11 @@ fn uri(path: &Path) -> String {
 }
 
 fn temp_project(name: &str, config: &str, files: &[(&str, &str)]) -> PathBuf {
-    let dir = std::env::temp_dir().join(format!("reqmd-lsp-{name}-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("requimd-lsp-{name}-{}", std::process::id()));
     let _ = fs::remove_dir_all(&dir);
     fs::create_dir_all(&dir).unwrap();
     let dir = std::path::absolute(dir).unwrap();
-    fs::write(dir.join("reqmd.toml"), config).unwrap();
+    fs::write(dir.join("requimd.toml"), config).unwrap();
     for (n, t) in files {
         let p = dir.join(n);
         fs::create_dir_all(p.parent().unwrap()).unwrap();
@@ -170,7 +170,7 @@ fn fr_200_initialize_capabilities_and_shutdown() {
     ] {
         assert!(!caps[key].is_null(), "missing {key}");
     }
-    assert_eq!(init["serverInfo"]["name"], "reqmd");
+    assert_eq!(init["serverInfo"]["name"], "requimd");
     c.shutdown();
 
     let (c, init) = Client::start(&dir, json!({}));
@@ -253,7 +253,7 @@ fn fr_217_external_changes_by_polling() {
     assert!(d.is_empty(), "{d:?}");
     // A configuration change is picked up as well.
     fs::write(
-        dir.join("reqmd.toml"),
+        dir.join("requimd.toml"),
         "[checks]\nuncovered-step = \"off\"\n",
     )
     .unwrap();
@@ -432,7 +432,7 @@ fn fr_209_to_fr_219_authoring_features_over_protocol() {
     );
     assert_eq!(actions[0]["title"], "Create requirement for UC-001.s2");
 
-    // FR-219: "Allow in project" changes reqmd.toml and the diagnostics.
+    // FR-219: "Allow in project" changes requimd.toml and the diagnostics.
     let actions = c.request(
         "textDocument/codeAction",
         json!({ "textDocument": fr_doc,
@@ -453,18 +453,18 @@ fn fr_209_to_fr_219_authoring_features_over_protocol() {
         ]
     );
     c.request("workspace/executeCommand", actions[1]["command"].clone());
-    let config = fs::read_to_string(dir.join("reqmd.toml")).unwrap();
+    let config = fs::read_to_string(dir.join("requimd.toml")).unwrap();
     assert!(config.starts_with("# keep this comment\n"), "{config}");
     assert!(config.contains("allow = [\"fast\"]"), "{config}");
     let d = c.diagnostics(&uri(&fr_path), SECOND).unwrap();
     assert_eq!(checks(&d), ["glossary-alias"]);
 
-    // "Add to weak words" opens reqmd.toml at the empty reason.
+    // "Add to weak words" opens requimd.toml at the empty reason.
     c.request(
         "workspace/executeCommand",
-        json!({ "command": "reqmd.addWeakWord", "arguments": ["payment"] }),
+        json!({ "command": "requimd.addWeakWord", "arguments": ["payment"] }),
     );
-    let config = fs::read_to_string(dir.join("reqmd.toml")).unwrap();
+    let config = fs::read_to_string(dir.join("requimd.toml")).unwrap();
     assert!(
         config.contains("{ w = \"payment\", why = \"\" }"),
         "{config}"
@@ -475,7 +475,7 @@ fn fr_209_to_fr_219_authoring_features_over_protocol() {
         .rfind(|r| r.method == "window/showDocument")
         .unwrap()
         .params;
-    assert!(shown["uri"].as_str().unwrap().ends_with("reqmd.toml"));
+    assert!(shown["uri"].as_str().unwrap().ends_with("requimd.toml"));
     c.shutdown();
 }
 

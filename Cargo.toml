@@ -9,9 +9,9 @@ rust-version = "1.88"
 publish = false
 
 [workspace.dependencies]
-reqmd-core = { path = "crates/reqmd-core" }
-reqmd-checks = { path = "crates/reqmd-checks" }
-reqmd-lsp = { path = "crates/reqmd-lsp" }
+requimd-core = { path = "crates/requimd-core" }
+requimd-checks = { path = "crates/requimd-checks" }
+requimd-lsp = { path = "crates/requimd-lsp" }
 
 pulldown-cmark = { version = "0.13.4", default-features = false }
 toml = "1.1.8"

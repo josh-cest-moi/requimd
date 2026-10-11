@@ -6,17 +6,17 @@ Everything below uses core APIs available since Neovim 0.11.
 ## Configuration
 
 ```lua
-vim.lsp.config('reqmd', {
-  cmd = { 'reqmd', 'lsp' },
+vim.lsp.config('requimd', {
+  cmd = { 'requimd', 'lsp' },
   filetypes = { 'markdown' },
-  root_markers = { 'reqmd.toml' },
+  root_markers = { 'requimd.toml' },
 })
-vim.lsp.enable('reqmd')
+vim.lsp.enable('requimd')
 
 vim.api.nvim_create_autocmd('LspAttach', {
   callback = function(ev)
     local client = vim.lsp.get_client_by_id(ev.data.client_id)
-    if client and client.name == 'reqmd' then
+    if client and client.name == 'requimd' then
       vim.lsp.completion.enable(true, client.id, ev.buf, { autotrigger = true })
       vim.lsp.inlay_hint.enable(true, { bufnr = ev.buf })
     end
@@ -26,7 +26,7 @@ vim.api.nvim_create_autocmd('LspAttach', {
 -- Optional, for the code lens on use case steps (FR-215): running a lens
 -- lists the implementing items in the quickfix list. Without it, the
 -- server opens the first implementing item.
-vim.lsp.commands['reqmd.implementations'] = function(command, ctx)
+vim.lsp.commands['requimd.implementations'] = function(command, ctx)
   local client = vim.lsp.get_client_by_id(ctx.client_id)
   local items = vim.lsp.util.locations_to_items(command.arguments[1], client.offset_encoding)
   vim.fn.setqflist({}, ' ', { title = command.title, items = items })
@@ -34,7 +34,7 @@ vim.lsp.commands['reqmd.implementations'] = function(command, ctx)
 end
 ```
 
-`root_markers` ensures the server only starts inside reqmd projects.
+`root_markers` ensures the server only starts inside requimd projects.
 
 ## Features and default keys
 
@@ -44,7 +44,7 @@ Verified with Neovim 0.12.6, `--clean` (no plugins, no user config), by
 
 ```bash
 cargo build --release
-nvim --headless --clean -l scripts/nvim-check.lua target/release/reqmd
+nvim --headless --clean -l scripts/nvim-check.lua target/release/requimd
 ```
 
 | Feature | Requirement | Neovim | Verified |
@@ -70,12 +70,12 @@ nvim --headless --clean -l scripts/nvim-check.lua target/release/reqmd
 Completion in body text finds items by ID or by a word of the title: type
 `VAT` and press `<C-x><C-o>` to get `FR-104`.
 
-Settings in `[lsp]` of `reqmd.toml`: `hover-length` (characters of item
+Settings in `[lsp]` of `requimd.toml`: `hover-length` (characters of item
 text on hover, default 500), `hint-length` (inlay hints, default 40) and
 `stub-file` (where FR-213 puts new stubs; default the current file).
 
-"Allow in project" and "Add to weak words" change `reqmd.toml` on disk and
-keep its comments. If you have `reqmd.toml` open with unsaved changes, save
+"Allow in project" and "Add to weak words" change `requimd.toml` on disk and
+keep its comments. If you have `requimd.toml` open with unsaved changes, save
 it first. "Add to weak words" then opens it at the new entry; type the
 reason between the quotes of `why`.
 

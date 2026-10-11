@@ -2,16 +2,16 @@
 
 ## What this project is
 
-reqmd (working title) is a requirements management tool for business
-analysts. Requirements live as Markdown files in a git repository; a CLI
+requimd (spoken "requi-m-d", formerly reqmd, ADR-0006) is a requirements
+management tool for business analysts. Requirements live as Markdown files in a git repository; a CLI
 checks them and a language server supports writing them in any LSP editor,
 primarily Neovim 0.12. The repository owner is a business analyst and acts
 as product owner.
 
 ## Status
 
-Specification done (M0); M1 (parser and `reqmd check`), M2 (language
-server, `reqmd lsp`) and M3 (glossary, language checks, authoring features)
+Specification done (M0); M1 (parser and `requimd check`), M2 (language
+server, `requimd lsp`) and M3 (glossary, language checks, authoring features)
 implemented in the cargo workspace under `crates/`. Next is milestone M4 in
 `docs/roadmap.md`, starting with an ADR for the lock file. **Read
 `docs/status.md` first**: it holds the decision log, open questions and
@@ -32,7 +32,7 @@ pulldown-cmark and LSP library lsp-server (ADR-0003, accepted 2026-10-10).
 
 ## Source of truth
 
-- `requirements/` is the specification, written in the reqmd format itself.
+- `requirements/` is the specification, written in the requimd format itself.
   Read `requirements/README.md` first, then the items relevant to the task.
 - The format is specified normatively in `requirements/functional/format.md`
   (FR-001 to FR-014) and `requirements/rules.md`. When in doubt about syntax,
@@ -61,7 +61,7 @@ pulldown-cmark and LSP library lsp-server (ADR-0003, accepted 2026-10-10).
   `examples/broken/EXPECTED.md`. Use both as fixtures.
 - Every `must` requirement of a milestone needs at least one test whose name
   contains its ID (NFR-010).
-- As soon as `reqmd check` works, run it on this repository. The
+- As soon as `requimd check` works, run it on this repository. The
   specification must stay free of errors.
 
 ## Rust conventions

@@ -2,19 +2,19 @@
 -- built-in client and no plugins, using the setup from docs/neovim.md.
 --
 -- Usage (from the repository root, after `cargo build --release`):
---   nvim --headless --clean -l scripts/nvim-check.lua target/release/reqmd
+--   nvim --headless --clean -l scripts/nvim-check.lua target/release/requimd
 -- Prints one PASS/FAIL line per feature; exits with 1 on any failure.
 
-local bin = vim.fn.fnamemodify(arg[1] or 'target/release/reqmd', ':p')
+local bin = vim.fn.fnamemodify(arg[1] or 'target/release/requimd', ':p')
 local examples = vim.fn.fnamemodify('examples', ':p'):gsub('[/\\]$', '')
 
 -- Setup as in docs/neovim.md.
-vim.lsp.config('reqmd', {
+vim.lsp.config('requimd', {
   cmd = { bin, 'lsp' },
   filetypes = { 'markdown' },
-  root_markers = { 'reqmd.toml' },
+  root_markers = { 'requimd.toml' },
 })
-vim.lsp.enable('reqmd')
+vim.lsp.enable('requimd')
 
 local failed = 0
 local function check(name, ok, detail)
@@ -26,7 +26,7 @@ local function open(path)
   vim.cmd.edit(vim.fn.fnameescape(path))
   local buf = vim.api.nvim_get_current_buf()
   local ok = vim.wait(5000, function()
-    return #vim.lsp.get_clients({ bufnr = buf, name = 'reqmd' }) > 0
+    return #vim.lsp.get_clients({ bufnr = buf, name = 'requimd' }) > 0
   end, 20)
   return buf, ok
 end
@@ -34,7 +34,7 @@ end
 local buf, attached = open(examples .. '/shop/functional.md')
 check('FR-200/FR-308 server starts and attaches', attached)
 if not attached then os.exit(1) end
-local client = vim.lsp.get_clients({ bufnr = buf, name = 'reqmd' })[1]
+local client = vim.lsp.get_clients({ bufnr = buf, name = 'requimd' })[1]
 check('position encoding negotiated', client.offset_encoding == 'utf-8', client.offset_encoding)
 
 local function request(method, params, b)
@@ -114,7 +114,7 @@ for _, list in pairs(ren and ren.changes or {}) do edits = edits + #list end
 check('FR-214 rename', edits >= 6, tostring(edits))
 
 -- The code lens command handler recommended in docs/neovim.md.
-vim.lsp.commands['reqmd.implementations'] = function(command, ctx)
+vim.lsp.commands['requimd.implementations'] = function(command, ctx)
   local c = vim.lsp.get_client_by_id(ctx.client_id)
   local items = vim.lsp.util.locations_to_items(command.arguments[1], c.offset_encoding)
   vim.fn.setqflist({}, ' ', { title = command.title, items = items })
@@ -124,19 +124,19 @@ local lenses = request('textDocument/codeLens', { textDocument = { uri = vim.uri
 local lens = lenses and lenses[2]
 check('FR-215 code lens', lens and lens.command.title == '2 impl: FR-104, FR-105', lens and lens.command.title)
 if lens then
-  vim.lsp.commands['reqmd.implementations'](lens.command, { client_id = client.id })
+  vim.lsp.commands['requimd.implementations'](lens.command, { client_id = client.id })
   check('FR-215 code lens lists implementations', #vim.fn.getqflist() == 2)
 end
 vim.api.nvim_set_current_buf(buf)
 
--- FR-219 in a scratch project: "Allow in project" edits reqmd.toml.
+-- FR-219 in a scratch project: "Allow in project" edits requimd.toml.
 local scratch = vim.fn.tempname()
 vim.fn.mkdir(scratch, 'p')
-vim.fn.writefile({ '# my comment' }, scratch .. '/reqmd.toml')
+vim.fn.writefile({ '# my comment' }, scratch .. '/requimd.toml')
 vim.fn.writefile({ '## FR-001 X', '', 'The system shall be fast.' }, scratch .. '/fr.md')
 local frbuf = open(scratch .. '/fr.md')
 vim.wait(5000, function() return #vim.diagnostic.get(frbuf) == 1 end, 20)
-local sclient = vim.lsp.get_clients({ bufnr = frbuf, name = 'reqmd' })[1]
+local sclient = vim.lsp.get_clients({ bufnr = frbuf, name = 'requimd' })[1]
 local res = vim.lsp.buf_request_sync(frbuf, 'textDocument/codeAction', {
   textDocument = { uri = vim.uri_from_bufnr(frbuf) },
   range = { start = { line = 2, character = 21 }, ['end'] = { line = 2, character = 21 } },
@@ -148,7 +148,7 @@ for _, a in ipairs(res and res[sclient.id] and res[sclient.id].result or {}) do
 end
 if allow then sclient:exec_cmd(allow.command, { bufnr = frbuf }) end
 local cleared = vim.wait(5000, function() return #vim.diagnostic.get(frbuf) == 0 end, 20)
-local toml = table.concat(vim.fn.readfile(scratch .. '/reqmd.toml'), '\n')
+local toml = table.concat(vim.fn.readfile(scratch .. '/requimd.toml'), '\n')
 check('FR-219 allow in project', allow ~= nil and cleared
   and toml:find('# my comment', 1, true) ~= nil and toml:find('allow = ["fast"]', 1, true) ~= nil, toml)
 vim.api.nvim_set_current_buf(buf)
@@ -174,11 +174,11 @@ check('keys K, grr, gri, gra, grn, gO, ]d', mapped('K') and mapped('grr') and ma
 -- FR-217: a file created outside the editor, in a scratch project.
 local dir = vim.fn.tempname()
 vim.fn.mkdir(dir, 'p')
-vim.fn.writefile({}, dir .. '/reqmd.toml')
+vim.fn.writefile({}, dir .. '/requimd.toml')
 vim.fn.writefile({ '## UC-001 U', '', '- s1: Go.' }, dir .. '/uc.md')
 local uc = open(dir .. '/uc.md')
 vim.wait(5000, function() return #vim.diagnostic.get(uc) == 1 end, 20)
-local watches = vim.lsp.get_clients({ bufnr = uc, name = 'reqmd' })[1]
+local watches = vim.lsp.get_clients({ bufnr = uc, name = 'requimd' })[1]
   .capabilities.workspace.didChangeWatchedFiles.dynamicRegistration
 vim.fn.writefile({ '## FR-001 F', 'impl: UC-001.s1' }, dir .. '/fr.md')
 local covered = vim.wait(6000, function() return #vim.diagnostic.get(uc) == 0 end, 50)

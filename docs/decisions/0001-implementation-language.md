@@ -27,6 +27,6 @@ alternative.
 
 ## Consequences
 
-- One cargo workspace producing one binary `reqmd` (NFR-005).
+- One cargo workspace producing one binary `requimd` (NFR-005).
 - Standard tooling: `cargo fmt`, `cargo clippy -D warnings`, `cargo test`.
 - Library choices are recorded in ADR-0003.

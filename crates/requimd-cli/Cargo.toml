@@ -1,19 +1,19 @@
 [package]
-name = "reqmd-cli"
-description = "Command line interface of reqmd"
+name = "requimd-cli"
+description = "Command line interface of requimd"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 publish.workspace = true
 
 [[bin]]
-name = "reqmd"
+name = "requimd"
 path = "src/main.rs"
 
 [dependencies]
-reqmd-core.workspace = true
-reqmd-checks.workspace = true
-reqmd-lsp.workspace = true
+requimd-core.workspace = true
+requimd-checks.workspace = true
+requimd-lsp.workspace = true
 clap.workspace = true
 serde.workspace = true
 serde_json.workspace = true

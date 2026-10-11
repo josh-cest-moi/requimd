@@ -1,4 +1,4 @@
-//! The `reqmd` binary (FR-300 ff.).
+//! The `requimd` binary (FR-300 ff.).
 
 mod commands;
 
@@ -8,12 +8,12 @@ use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
 use clap::{Parser, Subcommand, ValueEnum};
-use reqmd_core::config::{CONFIG_FILE, INIT_TEMPLATE};
-use reqmd_core::{Config, Diagnostic, Project, Severity, find_root};
+use requimd_core::config::{CONFIG_FILE, INIT_TEMPLATE};
+use requimd_core::{Config, Diagnostic, Project, Severity, find_root};
 use serde::Serialize;
 
 #[derive(Parser)]
-#[command(name = "reqmd", version, about = "Requirements in Markdown")]
+#[command(name = "requimd", version, about = "Requirements in Markdown")]
 struct Cli {
     #[command(subcommand)]
     command: Command,
@@ -32,7 +32,7 @@ enum Command {
         #[arg(long)]
         strict: bool,
     },
-    /// Create reqmd.toml and an empty glossary in the current directory.
+    /// Create requimd.toml and an empty glossary in the current directory.
     Init,
     /// Assign IDs to placeholders and normalise metadata separators.
     Fmt {
@@ -86,7 +86,7 @@ fn main() -> ExitCode {
                 OK
             }
             Err((code, msg)) => {
-                eprintln!("reqmd: {msg}");
+                eprintln!("requimd: {msg}");
                 code
             }
         }),
@@ -96,7 +96,7 @@ fn main() -> ExitCode {
             OK
         }),
         // FR-308
-        Command::Lsp => match reqmd_lsp::run_stdio() {
+        Command::Lsp => match requimd_lsp::run_stdio() {
             Ok(()) => OK,
             Err(e) => fail(&format!("language server: {e}")),
         },
@@ -112,7 +112,7 @@ fn with_project(f: impl FnOnce(&Project, &Path) -> u8) -> u8 {
     };
     let Some(root) = find_root(&cwd) else {
         return fail(&format!(
-            "no {CONFIG_FILE} found in {} or its parents; run `reqmd init`",
+            "no {CONFIG_FILE} found in {} or its parents; run `requimd init`",
             cwd.display()
         ));
     };
@@ -145,7 +145,7 @@ fn check(paths: &[PathBuf], format: Format, strict: bool) -> u8 {
     let start = filters.first().cloned().unwrap_or_else(|| cwd.clone());
     let Some(root) = find_root(&start) else {
         return fail(&format!(
-            "no {CONFIG_FILE} found in {} or its parents; run `reqmd init`",
+            "no {CONFIG_FILE} found in {} or its parents; run `requimd init`",
             start.display()
         ));
     };
@@ -167,7 +167,7 @@ fn check(paths: &[PathBuf], format: Format, strict: bool) -> u8 {
         Err(e) => return fail(&e.to_string()),
     };
 
-    let diags: Vec<Diagnostic> = reqmd_checks::check(&project)
+    let diags: Vec<Diagnostic> = requimd_checks::check(&project)
         .into_iter()
         .filter(|d| {
             filters.is_empty()
@@ -271,7 +271,7 @@ fn init() -> u8 {
 }
 
 fn fail(message: &str) -> u8 {
-    eprintln!("reqmd: {message}");
+    eprintln!("requimd: {message}");
     USAGE
 }
 

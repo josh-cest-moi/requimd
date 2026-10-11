@@ -1,6 +1,6 @@
 # File format and parsing
 
-This file is the normative definition of the reqmd format. Examples in code
+This file is the normative definition of the requimd format. Examples in code
 blocks are not items (FR-009).
 
 ## FR-001 Item declaration
@@ -137,11 +137,11 @@ input while typing shall never stop parsing of the whole project.
 ## FR-013 Configuration discovery
 impl: UC-003.s2, UC-003.s2a  prio: must
 
-The system shall locate the project root by searching for `reqmd.toml` in
+The system shall locate the project root by searching for `requimd.toml` in
 the start directory and its parents. From this file it shall read include
 patterns, glossary path, item types with prefix, allowed and required keys,
 link types with allowed target types, value sets, defaults, check settings
-and language server settings. The file `reqmd.toml` at the repository root is the reference
+and language server settings. The file `requimd.toml` at the repository root is the reference
 example.
 
 ## FR-014 Configuration defaults
@@ -150,7 +150,7 @@ impl: UC-007.s1  prio: must
 Where a configuration section is missing, the system shall use built-in
 defaults: all Markdown files below the project root as include pattern, and
 the item types, link types, fields, value sets and defaults of the reference
-`reqmd.toml` at the repository root, without the project-specific keys
+`requimd.toml` at the repository root, without the project-specific keys
 `check` and `sev` and the value set `sev`. In short:
 
 | Type | Prefix | Metadata keys | Body fields | Required |

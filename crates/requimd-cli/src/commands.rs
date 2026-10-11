@@ -1,13 +1,13 @@
-//! `reqmd fmt`, `show` and `coverage` (FR-304 to FR-306).
+//! `requimd fmt`, `show` and `coverage` (FR-304 to FR-306).
 
 use std::collections::HashSet;
 use std::fmt::Write as _;
 use std::path::Path;
 
-use reqmd_core::config::{IMPL, USECASE};
-use reqmd_core::fmt::{Edit, apply, format_edits};
-use reqmd_core::parse::parse_target;
-use reqmd_core::{Item, Project, Reference, Resolution};
+use requimd_core::config::{IMPL, USECASE};
+use requimd_core::fmt::{Edit, apply, format_edits};
+use requimd_core::parse::parse_target;
+use requimd_core::{Item, Project, Reference, Resolution};
 
 /// FR-304. Returns the output and whether files (would) change.
 pub fn fmt(p: &Project, check: bool, cwd: &Path) -> Result<(String, bool), String> {

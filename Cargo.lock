@@ -297,26 +297,26 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d6f6ff9a378485b298a5286656da665ba74413d36db0979633275d2e708145d4"
 
 [[package]]
-name = "reqmd-checks"
+name = "requimd-checks"
 version = "0.1.0"
 dependencies = [
- "reqmd-core",
+ "requimd-core",
 ]
 
 [[package]]
-name = "reqmd-cli"
+name = "requimd-cli"
 version = "0.1.0"
 dependencies = [
  "clap",
- "reqmd-checks",
- "reqmd-core",
- "reqmd-lsp",
+ "requimd-checks",
+ "requimd-core",
+ "requimd-lsp",
  "serde",
  "serde_json",
 ]
 
 [[package]]
-name = "reqmd-core"
+name = "requimd-core"
 version = "0.1.0"
 dependencies = [
  "globset",
@@ -327,14 +327,14 @@ dependencies = [
 ]
 
 [[package]]
-name = "reqmd-lsp"
+name = "requimd-lsp"
 version = "0.1.0"
 dependencies = [
  "crossbeam-channel",
  "lsp-server",
  "lsp-types",
- "reqmd-checks",
- "reqmd-core",
+ "requimd-checks",
+ "requimd-core",
  "serde",
  "serde_json",
  "toml_edit",

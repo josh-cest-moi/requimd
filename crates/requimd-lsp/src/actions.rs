@@ -1,5 +1,5 @@
 //! Code actions: FR-212 assign ID, FR-213 create stub and FR-219 language
-//! check actions, plus the `reqmd.toml` edits behind FR-219, which keep
+//! check actions, plus the `requimd.toml` edits behind FR-219, which keep
 //! comments and formatting.
 
 use std::collections::HashMap;
@@ -10,17 +10,17 @@ use lsp_types::{
     DocumentChangeOperation, DocumentChanges, OneOf, OptionalVersionedTextDocumentIdentifier,
     ResourceOp, TextDocumentEdit, TextEdit, Uri, WorkspaceEdit,
 };
-use reqmd_core::config::{ALLOW_CHECKS, FUNCTIONAL, IMPL, USECASE};
-use reqmd_core::parse::code_ranges;
-use reqmd_core::words::{is_word_char, markers, overlaps};
-use reqmd_core::{Diagnostic, FileId, Item, Project, Resolution};
+use requimd_core::config::{ALLOW_CHECKS, FUNCTIONAL, IMPL, USECASE};
+use requimd_core::parse::code_ranges;
+use requimd_core::words::{is_word_char, markers, overlaps};
+use requimd_core::{Diagnostic, FileId, Item, Project, Resolution};
 use serde_json::json;
 
 use crate::convert::{LineIndex, path_to_uri};
 use crate::features::{self, Ctx};
 
-pub const ALLOW_IN_PROJECT: &str = "reqmd.allowInProject";
-pub const ADD_WEAK_WORD: &str = "reqmd.addWeakWord";
+pub const ALLOW_IN_PROJECT: &str = "requimd.allowInProject";
+pub const ADD_WEAK_WORD: &str = "requimd.addWeakWord";
 
 /// All code actions for `range` of `file`. `diags` are the project's
 /// current diagnostics.
@@ -366,7 +366,7 @@ fn allow_here(ctx: &Ctx, file: FileId, text: &str, at: usize, word: &str) -> Opt
             let content = text.get(line_start..line_end)?.trim_end();
             (
                 line_start + content.len(),
-                format!(" <!-- reqmd: allow {word} -->"),
+                format!(" <!-- requimd: allow {word} -->"),
             )
         }
     };
@@ -468,7 +468,7 @@ pub fn add_weak_word(config: &str, word: &str) -> Result<(String, usize), String
 
 #[cfg(test)]
 mod tests {
-    use reqmd_core::{Config, SourceFile};
+    use requimd_core::{Config, SourceFile};
 
     use super::*;
     use crate::convert::Encoding;
@@ -522,7 +522,7 @@ mod tests {
             uris: &uris,
         };
         let off = p.files[file].text.find(needle).unwrap() + 1;
-        code_actions(&ctx, file, off..off, &reqmd_checks::check(p))
+        code_actions(&ctx, file, off..off, &requimd_checks::check(p))
     }
 
     #[test]
@@ -591,7 +591,7 @@ mod tests {
     #[test]
     fn fr_213_stub_file_is_created_if_missing() {
         let p = project(
-            "[lsp]\nstub-file = \"no-such-inbox-reqmd-test.md\"\n",
+            "[lsp]\nstub-file = \"no-such-inbox-requimd-test.md\"\n",
             &[("a.md", "## FR-001 A\nref: FR-999\n\nThe system shall.\n")],
         );
         let a = actions(&p, 0, "FR-999");
@@ -615,7 +615,7 @@ mod tests {
             "",
             &[(
                 "a.md",
-                "## FR-001 A\n\nThe system shall be fast.\nIt shall be easy. <!-- reqmd: allow quick -->\n",
+                "## FR-001 A\n\nThe system shall be fast.\nIt shall be easy. <!-- requimd: allow quick -->\n",
             )],
         );
         let a = actions(&p, 0, "fast");
@@ -623,12 +623,12 @@ mod tests {
         assert_eq!(t[0], "Allow \"fast\" on this line");
         assert_eq!(t[1], "Allow \"fast\" in project (weak-word)");
         let e = first_edit(&a[0]);
-        assert_eq!(e.new_text, " <!-- reqmd: allow fast -->");
+        assert_eq!(e.new_text, " <!-- requimd: allow fast -->");
         assert_eq!(e.range.start, lsp_types::Position::new(2, 25));
         let a = actions(&p, 0, "easy");
         let e = first_edit(&a[0]);
         assert_eq!(e.new_text, ", easy");
-        assert_eq!(e.range.start, lsp_types::Position::new(3, 41));
+        assert_eq!(e.range.start, lsp_types::Position::new(3, 43));
     }
 
     #[test]
@@ -663,7 +663,7 @@ mod tests {
         assert_eq!(c.allow("weak-word"), ["fast"]);
         assert_eq!(
             c.check_level("weak-word"),
-            Some(reqmd_core::Level::On(reqmd_core::Severity::Info))
+            Some(requimd_core::Level::On(requimd_core::Severity::Info))
         );
         // Adding twice keeps one entry.
         let again = add_allow(&out, "weak-word", "FAST").unwrap();

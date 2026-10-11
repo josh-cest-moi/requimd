@@ -26,9 +26,9 @@ use lsp_types::{
     Location, RenameOptions, RenameParams, ShowDocumentParams, TextDocumentPositionParams,
     WorkDoneProgressOptions,
 };
-use reqmd_core::config::CONFIG_FILE;
-use reqmd_core::parse::{Parsed, parse};
-use reqmd_core::{
+use requimd_core::config::CONFIG_FILE;
+use requimd_core::parse::{Parsed, parse};
+use requimd_core::{
     Config, FileId, Includes, Project, Severity, SourceFile, find_root, glossary_rel,
     project_files, read_text, relative_path,
 };
@@ -52,7 +52,7 @@ pub fn run(conn: &Connection) -> Result<(), Error> {
     let encoding = negotiate_encoding(&init.capabilities);
     let result = serde_json::json!({
         "capabilities": capabilities(encoding),
-        "serverInfo": { "name": "reqmd", "version": env!("CARGO_PKG_VERSION") },
+        "serverInfo": { "name": "requimd", "version": env!("CARGO_PKG_VERSION") },
     });
     conn.initialize_finish(id, result)?;
     let mut server = Server::new(conn, encoding, &init);
@@ -192,7 +192,7 @@ impl<'a> Server<'a> {
         }
     }
 
-    /// Reads `reqmd.toml` and all included files (FR-013, FR-217).
+    /// Reads `requimd.toml` and all included files (FR-013, FR-217).
     fn load_config(&mut self) {
         let Some(root) = self.root.clone() else {
             return;
@@ -276,7 +276,7 @@ impl<'a> Server<'a> {
     fn register_watchers(&self) {
         let params = RegistrationParams {
             registrations: vec![Registration {
-                id: "reqmd-watch".into(),
+                id: "requimd-watch".into(),
                 method: "workspace/didChangeWatchedFiles".into(),
                 register_options: Some(serde_json::json!({
                     "watchers": [
@@ -287,7 +287,7 @@ impl<'a> Server<'a> {
             }],
         };
         let req = Request::new(
-            RequestId::from("reqmd-watch".to_string()),
+            RequestId::from("requimd-watch".to_string()),
             "client/registerCapability".into(),
             params,
         );
@@ -401,7 +401,7 @@ impl<'a> Server<'a> {
         self.dirty_since = None;
         self.rebuild();
         let mut by_file: HashMap<FileId, Vec<lsp_types::Diagnostic>> = HashMap::new();
-        for d in reqmd_checks::check(&self.project) {
+        for d in requimd_checks::check(&self.project) {
             let Some(f) = self.project.files.get(d.file) else {
                 continue;
             };
@@ -420,7 +420,7 @@ impl<'a> Server<'a> {
                         Severity::Info => DiagnosticSeverity::INFORMATION,
                     }),
                     code: Some(NumberOrString::String(d.check.to_string())),
-                    source: Some("reqmd".into()),
+                    source: Some("requimd".into()),
                     message: d.message,
                     ..lsp_types::Diagnostic::default()
                 });
@@ -667,7 +667,7 @@ impl<'a> Server<'a> {
         let p: RenameParams = serde_json::from_value(params).map_err(|e| e.to_string())?;
         let tdp = p.text_document_position;
         let Some((file, off)) = self.locate(&tdp.text_document.uri, tdp.position) else {
-            return Err("not a file of the reqmd project".into());
+            return Err("not a file of the requimd project".into());
         };
         let edit = features::rename(&self.ctx(), file, off, &p.new_name)?;
         serde_json::to_value(edit).map_err(|e| e.to_string())
@@ -715,13 +715,13 @@ impl<'a> Server<'a> {
         Ok(Value::Null)
     }
 
-    /// FR-219: changes `reqmd.toml` on disk, reloads it and, if `edit`
+    /// FR-219: changes `requimd.toml` on disk, reloads it and, if `edit`
     /// returns an offset, opens the file there.
     fn edit_config(
         &mut self,
         edit: impl FnOnce(&str) -> Result<(String, Option<usize>), String>,
     ) -> Result<(), String> {
-        let root = self.root.clone().ok_or("no reqmd project")?;
+        let root = self.root.clone().ok_or("no requimd project")?;
         let path = root.join(CONFIG_FILE);
         let text = std::fs::read_to_string(&path).map_err(|e| e.to_string())?;
         let (new, at) = edit(&text)?;
@@ -750,7 +750,7 @@ impl<'a> Server<'a> {
             selection,
         };
         let req = Request::new(
-            RequestId::from("reqmd-show".to_string()),
+            RequestId::from("requimd-show".to_string()),
             "window/showDocument".into(),
             params,
         );
@@ -837,7 +837,7 @@ impl<'a> Server<'a> {
         let Some((_, end)) = self.locate(&p.text_document.uri, p.range.end) else {
             return Ok(Value::Null);
         };
-        let diags = reqmd_checks::check(&self.project);
+        let diags = requimd_checks::check(&self.project);
         let list = actions::code_actions(&self.ctx(), file, start..end.max(start), &diags);
         serde_json::to_value(list).map_err(|e| e.to_string())
     }
@@ -852,7 +852,7 @@ impl<'a> Server<'a> {
             "window/showMessage",
             ShowMessageParams {
                 typ: MessageType::ERROR,
-                message: format!("reqmd: {message}"),
+                message: format!("requimd: {message}"),
             },
         );
     }
@@ -862,7 +862,7 @@ impl<'a> Server<'a> {
             "window/logMessage",
             ShowMessageParams {
                 typ: MessageType::WARNING,
-                message: format!("reqmd: {message}"),
+                message: format!("requimd: {message}"),
             },
         );
     }

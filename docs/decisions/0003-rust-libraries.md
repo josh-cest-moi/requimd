@@ -18,7 +18,7 @@ adding the dependencies.
 | Maturity | 0.13.x, used by mdBook | 0.5x, frequent releases | 1.0.0 after long alpha |
 | Code style | Idiomatic | Heavy `RefCell`, unidiomatic | Idiomatic |
 
-Proposal: **pulldown-cmark**. reqmd builds its own item graph anyway, so the
+Proposal: **pulldown-cmark**. requimd builds its own item graph anyway, so the
 missing tree costs little; byte offsets map directly to LSP ranges.
 
 ## LSP library
@@ -38,7 +38,7 @@ makes debouncing for NFR-001 easier to control.
 
 ## Further crates (not contentious)
 
-- `toml_edit` for writing `reqmd.toml` without losing comments (FR-219);
+- `toml_edit` for writing `requimd.toml` without losing comments (FR-219);
   `toml` / `serde` for reading.
 - `clap` for the CLI, `serde_json` for JSON output (FR-301).
 - `globset` or `ignore` for include patterns (FR-013).
@@ -46,12 +46,12 @@ makes debouncing for NFR-001 easier to control.
 ## Consequences
 
 - The parser consumes pulldown-cmark's event stream with byte ranges and
-  builds reqmd's own item model; there is no intermediate Markdown tree.
+  builds requimd's own item model; there is no intermediate Markdown tree.
   Positions stay byte offsets until the LSP boundary.
 - pulldown-cmark knows nothing about items, metadata blocks or mentions.
-  reqmd recognises them itself on the text of headings and paragraphs,
+  requimd recognises them itself on the text of headings and paragraphs,
   skipping code (FR-009).
 - The language server (M2) runs its own synchronous loop on lsp-server's
-  channels; debouncing and cancellation for NFR-001 are reqmd code.
+  channels; debouncing and cancellation for NFR-001 are requimd code.
 - No tokio or other async runtime in the dependency tree (NFR-005).
 - Versions are checked again when each dependency is added to `Cargo.toml`.

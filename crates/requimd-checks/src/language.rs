@@ -5,9 +5,9 @@
 use std::collections::HashMap;
 use std::ops::Range;
 
-use reqmd_core::config::{ALLOW_CHECKS, FUNCTIONAL, QUALITY, STORY};
-use reqmd_core::words::{Phrases, find_phrase, ignored_ranges, markers, overlaps};
-use reqmd_core::{Item, Project, Severity};
+use requimd_core::config::{ALLOW_CHECKS, FUNCTIONAL, QUALITY, STORY};
+use requimd_core::words::{Phrases, find_phrase, ignored_ranges, markers, overlaps};
+use requimd_core::{Item, Project, Severity};
 
 use crate::Out;
 

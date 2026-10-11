@@ -21,10 +21,10 @@ FR-118, FR-119 and FR-219.
 4. **Titles are checked**, because they appear in completion, hover and the
    outline (FR-110, FR-114).
 5. **Silencing**: a project-wide `allow` list per check, and an inline
-   HTML comment `<!-- reqmd: allow <word> -->` per line. The comment is
+   HTML comment `<!-- requimd: allow <word> -->` per line. The comment is
    invisible on GitHub and GitLab (NFR-008) and is written by a code action
    (FR-219). Stale markers are reported (`unused-allow`).
-6. **Lists live in `reqmd.toml`**, versioned and shared, so editor and CI
+6. **Lists live in `requimd.toml`**, versioned and shared, so editor and CI
    behave identically.
 
 ## Rejected alternatives

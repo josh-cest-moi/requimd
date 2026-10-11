@@ -15,5 +15,5 @@ The repository lives on GitHub; CI runs on GitHub Actions.
 
 - M1 adds `.github/workflows/ci.yml`: `cargo fmt --check`, `cargo clippy`,
   `cargo test` on Linux and macOS (Windows as allowed failure until NFR-004
-  `plan` is met), plus `reqmd check` on this repository and `examples/shop`.
+  `plan` is met), plus `requimd check` on this repository and `examples/shop`.
 - Release binaries are built by Actions in M5.

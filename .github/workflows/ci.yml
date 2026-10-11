@@ -34,9 +34,9 @@ jobs:
       - run: cargo clippy --all-targets -- -D warnings
       - run: cargo test --all
       - name: Performance tests in release mode (NFR-001 to NFR-003)
-        run: cargo test --release -p reqmd-lsp -p reqmd-checks nfr_00
-      - name: reqmd check on this repository
+        run: cargo test --release -p requimd-lsp -p requimd-checks nfr_00
+      - name: requimd check on this repository
         run: cargo run --quiet -- check
-      - name: reqmd check on examples/shop
+      - name: requimd check on examples/shop
         run: cargo run --quiet --manifest-path ../../Cargo.toml -- check --strict
         working-directory: examples/shop

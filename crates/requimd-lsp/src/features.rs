@@ -11,10 +11,10 @@ use lsp_types::{
     InlayHint, InlayHintLabel, Location, MarkupContent, MarkupKind, OneOf, SymbolKind, TextEdit,
     Uri, WorkspaceEdit, WorkspaceSymbol,
 };
-use reqmd_core::config::{IMPL, STEP, USECASE};
-use reqmd_core::parse::{code_ranges, key_colon, parse_target};
-use reqmd_core::words::find_phrase;
-use reqmd_core::{FileId, Item, Project, Reference, Resolution, Target};
+use requimd_core::config::{IMPL, STEP, USECASE};
+use requimd_core::parse::{code_ranges, key_colon, parse_target};
+use requimd_core::words::find_phrase;
+use requimd_core::{FileId, Item, Project, Reference, Resolution, Target};
 
 use crate::convert::{Encoding, LineIndex, path_to_uri};
 
@@ -474,7 +474,7 @@ pub fn inlay_hints(ctx: &Ctx, file: FileId, range: Range<usize>) -> Vec<InlayHin
 
 /// Command run by a step's code lens; its argument is the list of
 /// locations of the implementing items (FR-215).
-pub const IMPLEMENTATIONS_COMMAND: &str = "reqmd.implementations";
+pub const IMPLEMENTATIONS_COMMAND: &str = "requimd.implementations";
 
 /// FR-215: number and IDs of the implementing items on each step.
 pub fn code_lenses(ctx: &Ctx, file: FileId) -> Vec<CodeLens> {
@@ -857,7 +857,7 @@ fn context(p: &Project, item: &Item, text: &str, off: usize) -> Option<Context> 
 mod tests {
     use std::path::PathBuf;
 
-    use reqmd_core::{Config, SourceFile};
+    use requimd_core::{Config, SourceFile};
 
     use super::*;
 

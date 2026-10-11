@@ -1,6 +1,6 @@
 [package]
-name = "reqmd-core"
-description = "Configuration, parser and item model of reqmd"
+name = "requimd-core"
+description = "Configuration, parser and item model of requimd"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

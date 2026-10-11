@@ -188,7 +188,7 @@ pub fn overlaps(ranges: &[Range<usize>], r: &Range<usize>) -> bool {
     ranges.iter().any(|o| o.start < r.end && r.start < o.end)
 }
 
-/// An inline marker `<!-- reqmd: allow a, b -->` at a line end (FR-119).
+/// An inline marker `<!-- requimd: allow a, b -->` at a line end (FR-119).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Marker {
     /// The line the marker applies to.
@@ -223,8 +223,8 @@ fn marker_on_line(text: &str, line: Range<usize>) -> Option<Marker> {
     let body = trimmed.strip_suffix("-->")?;
     let open = body.rfind("<!--")?;
     let inner = body.get(open + 4..)?;
-    let after_reqmd = inner.trim_start().strip_prefix("reqmd:")?;
-    let list = after_reqmd.trim_start().strip_prefix("allow")?;
+    let after_requimd = inner.trim_start().strip_prefix("requimd:")?;
+    let list = after_requimd.trim_start().strip_prefix("allow")?;
     if !list.starts_with(char::is_whitespace) {
         return None;
     }
@@ -302,7 +302,7 @@ mod tests {
 
     #[test]
     fn fr_119_inline_markers() {
-        let t = "The Fast Track page. <!-- reqmd: allow fast, as needed -->\nNo marker <!-- other -->\n";
+        let t = "The Fast Track page. <!-- requimd: allow fast, as needed -->\nNo marker <!-- other -->\n";
         let m = markers(t, 0..t.len());
         assert_eq!(m.len(), 1);
         let entries: Vec<&str> = m[0]
@@ -316,8 +316,8 @@ mod tests {
         assert_eq!(entries, ["fast", "as needed"]);
         assert_eq!(
             &t[m[0].line.clone()],
-            "The Fast Track page. <!-- reqmd: allow fast, as needed -->"
+            "The Fast Track page. <!-- requimd: allow fast, as needed -->"
         );
-        assert!(markers("x <!-- reqmd: allowfast -->", 0..27).is_empty());
+        assert!(markers("x <!-- requimd: allowfast -->", 0..27).is_empty());
     }
 }

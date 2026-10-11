@@ -16,7 +16,7 @@ configured in the editor is not included.
 
 ## NFR-002 Full check duration
 ref: FR-300  prio: must
-scale: seconds for `reqmd check` on a whole project, wall clock
+scale: seconds for `requimd check` on a whole project, wall clock
 meter: benchmark on the generated project of NFR-001, standard laptop
 must: 5
 plan: 1

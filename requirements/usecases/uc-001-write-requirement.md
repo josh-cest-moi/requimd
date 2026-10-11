@@ -1,7 +1,7 @@
 ## UC-001 Write a new requirement
 actor: Analyst  prio: must
 
-pre: The file is inside a reqmd project and the editor's LSP client is attached.
+pre: The file is inside a requimd project and the editor's LSP client is attached.
 
 - s1: Analyst writes a heading with a placeholder ID and a title.
 - s2: Analyst writes the metadata block; system offers completion for keys, values and link targets.

@@ -4,7 +4,7 @@
 impl: UC-007.s3  prio: must
 
 The system shall provide a language server speaking the Language Server
-Protocol over stdio, started with `reqmd lsp`.
+Protocol over stdio, started with `requimd lsp`.
 
 ## FR-201 Project scope
 impl: UC-007.s3  prio: must
@@ -41,7 +41,7 @@ When the cursor is on a reference, the language server shall show on hover
 the ID, type, status and title of the target, and its text up to a
 configurable length. For a step reference it shows the step text; for a
 glossary term, its definition. The length is set in characters by
-`hover-length` in the `[lsp]` section of `reqmd.toml`, default 500.
+`hover-length` in the `[lsp]` section of `requimd.toml`, default 500.
 
 ## FR-206 Go to definition
 impl: UC-002.s4  prio: must
@@ -141,12 +141,12 @@ The language server shall offer these code actions:
 
 - **Add to weak words**, on any word or selected phrase without a
   diagnostic: adds it to `words` of `[checks.weak-word]` with an empty
-  reason and opens `reqmd.toml` at that entry for the reason.
+  reason and opens `requimd.toml` at that entry for the reason.
 - **Allow here**, on a weak-word, modal-verb or glossary-alias diagnostic:
   adds or extends the inline marker of FR-119 on that line.
 - **Allow in project**, on the same diagnostics: adds the word to the
   `allow` list of that check.
 
-Changes to `reqmd.toml` shall keep its comments and formatting. After the
+Changes to `requimd.toml` shall keep its comments and formatting. After the
 change, the server shall reload the configuration and update the
 diagnostics of all open documents.

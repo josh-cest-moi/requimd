@@ -1,4 +1,4 @@
-//! Parser for reqmd files (FR-001 to FR-010, FR-012).
+//! Parser for requimd files (FR-001 to FR-010, FR-012).
 //!
 //! pulldown-cmark finds headings, lists and code; items, metadata, body
 //! fields, steps and references are recognised on the source text. The

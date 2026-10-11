@@ -16,7 +16,7 @@ example `FR-007`. See BR-001.
 ## Prefix
 
 The leading letters of an item ID. The prefix determines the item type and
-is configured in `reqmd.toml`.
+is configured in `requimd.toml`.
 
 ## Item type
 
@@ -41,7 +41,7 @@ written as a metadata entry, for example `impl: UC-012.s2`.
 ## Link type
 
 The meaning of a link, such as implements, refines or verifies. Configured
-in `reqmd.toml` together with its metadata key.
+in `requimd.toml` together with its metadata key.
 
 ## Mention
 
@@ -71,7 +71,7 @@ A link whose target has changed since the link was last reviewed.
 
 ## Lock file
 
-The file `reqmd.lock` in the project root that records review state of
+The file `requimd.lock` in the project root that records review state of
 links and the highest assigned number per prefix.
 
 ## Coverage
@@ -80,7 +80,7 @@ The share of use case steps that at least one item implements.
 
 ## Project root
 
-The directory containing `reqmd.toml`.
+The directory containing `requimd.toml`.
 
 ## Diagnostic
 

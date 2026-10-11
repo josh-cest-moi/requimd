@@ -47,5 +47,5 @@ When a refund is requested, the system shall return the full amount.
 ## FR-004 Order page link
 impl: UC-001.s1
 
-The Fast Track page shall load the order form. <!-- reqmd: allow fast -->
-The order form shall be easy to use. <!-- reqmd: allow quick -->
+The Fast Track page shall load the order form. <!-- requimd: allow fast -->
+The order form shall be easy to use. <!-- requimd: allow quick -->

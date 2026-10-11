@@ -5,8 +5,8 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
 
-fn reqmd(dir: &Path, args: &[&str]) -> Output {
-    Command::new(env!("CARGO_BIN_EXE_reqmd"))
+fn requimd(dir: &Path, args: &[&str]) -> Output {
+    Command::new(env!("CARGO_BIN_EXE_requimd"))
         .args(args)
         .current_dir(dir)
         .output()
@@ -27,7 +27,7 @@ fn examples(name: &str) -> PathBuf {
 
 /// A fresh, empty directory for one test.
 fn temp_dir(name: &str) -> PathBuf {
-    let dir = std::env::temp_dir().join(format!("reqmd-test-{name}-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("requimd-test-{name}-{}", std::process::id()));
     let _ = fs::remove_dir_all(&dir);
     fs::create_dir_all(&dir).unwrap();
     dir
@@ -39,7 +39,7 @@ fn write(dir: &Path, name: &str, text: &str) {
 
 #[test]
 fn fr_300_text_output_and_exit_code_1_on_errors() {
-    let o = reqmd(&examples("broken"), &["check"]);
+    let o = requimd(&examples("broken"), &["check"]);
     assert_eq!(o.status.code(), Some(1));
     let out = stdout(&o);
     let lines: Vec<&str> = out.lines().collect();
@@ -57,7 +57,7 @@ fn fr_300_text_output_and_exit_code_1_on_errors() {
 
 #[test]
 fn fr_300_exit_code_0_without_errors() {
-    let o = reqmd(&examples("shop"), &["check"]);
+    let o = requimd(&examples("shop"), &["check"]);
     assert_eq!(o.status.code(), Some(0));
     assert_eq!(stdout(&o), "");
 }
@@ -65,59 +65,59 @@ fn fr_300_exit_code_0_without_errors() {
 #[test]
 fn fr_300_exit_code_2_without_configuration() {
     let dir = temp_dir("noconfig");
-    let o = reqmd(&dir, &["check"]);
+    let o = requimd(&dir, &["check"]);
     assert_eq!(o.status.code(), Some(2));
-    assert!(String::from_utf8_lossy(&o.stderr).contains("reqmd.toml"));
+    assert!(String::from_utf8_lossy(&o.stderr).contains("requimd.toml"));
 }
 
 #[test]
 fn fr_300_exit_code_2_on_configuration_error() {
     let dir = temp_dir("badconfig");
-    write(&dir, "reqmd.toml", "[checks]\nno-such-check = \"info\"\n");
-    assert_eq!(reqmd(&dir, &["check"]).status.code(), Some(2));
+    write(&dir, "requimd.toml", "[checks]\nno-such-check = \"info\"\n");
+    assert_eq!(requimd(&dir, &["check"]).status.code(), Some(2));
 }
 
 #[test]
 fn fr_300_exit_code_2_on_usage_error() {
-    let o = reqmd(&examples("shop"), &["check", "--format", "xml"]);
+    let o = requimd(&examples("shop"), &["check", "--format", "xml"]);
     assert_eq!(o.status.code(), Some(2));
-    let o = reqmd(&examples("shop"), &["check", "missing.md"]);
+    let o = requimd(&examples("shop"), &["check", "missing.md"]);
     assert_eq!(o.status.code(), Some(2));
 }
 
 #[test]
 fn fr_300_paths_filter_output_but_whole_project_is_loaded() {
     let dir = temp_dir("paths");
-    write(&dir, "reqmd.toml", "");
+    write(&dir, "requimd.toml", "");
     write(&dir, "a.md", "## UC-001 U\n\n- s1: Go.\n");
     write(
         &dir,
         "b.md",
         "## FR-001 F\nimpl: UC-001.s1\n\n## FR-? New\n",
     );
-    let o = reqmd(&dir, &["check", "a.md"]);
+    let o = requimd(&dir, &["check", "a.md"]);
     // The link in b.md covers the step, and b.md is not reported.
     assert_eq!(o.status.code(), Some(0));
     assert_eq!(stdout(&o), "");
-    let o = reqmd(&dir, &["check", "b.md"]);
+    let o = requimd(&dir, &["check", "b.md"]);
     let out = stdout(&o);
     assert!(out.contains("b.md:4:1: warning: placeholder"), "{out}");
     assert!(out.lines().all(|l| l.starts_with("b.md:")), "{out}");
     // Paths from different projects are a usage error.
     let other = examples("shop");
-    let o = reqmd(&dir, &["check", "a.md", other.to_str().unwrap()]);
+    let o = requimd(&dir, &["check", "a.md", other.to_str().unwrap()]);
     assert_eq!(o.status.code(), Some(2));
 }
 
 #[test]
 fn fr_300_project_root_found_from_subdirectory() {
-    let o = reqmd(&repo().join("requirements").join("functional"), &["check"]);
+    let o = requimd(&repo().join("requirements").join("functional"), &["check"]);
     assert_eq!(o.status.code(), Some(0), "{}", stdout(&o));
 }
 
 #[test]
 fn fr_301_json_output() {
-    let o = reqmd(&examples("broken"), &["check", "--format", "json"]);
+    let o = requimd(&examples("broken"), &["check", "--format", "json"]);
     assert_eq!(o.status.code(), Some(1));
     let v: serde_json::Value = serde_json::from_str(&stdout(&o)).unwrap();
     let arr = v.as_array().unwrap();
@@ -136,39 +136,39 @@ fn fr_301_json_output() {
         assert!(d.get(key).is_some(), "missing {key}");
     }
     assert_eq!(d["file"], "broken.md");
-    let o = reqmd(&examples("shop"), &["check", "--format", "json"]);
+    let o = requimd(&examples("shop"), &["check", "--format", "json"]);
     assert_eq!(stdout(&o).trim(), "[]");
 }
 
 #[test]
 fn fr_302_strict_treats_warnings_as_errors() {
     let dir = temp_dir("strict");
-    write(&dir, "reqmd.toml", "");
+    write(&dir, "requimd.toml", "");
     write(&dir, "a.md", "## FR-? New\n");
-    assert_eq!(reqmd(&dir, &["check"]).status.code(), Some(0));
-    assert_eq!(reqmd(&dir, &["check", "--strict"]).status.code(), Some(1));
+    assert_eq!(requimd(&dir, &["check"]).status.code(), Some(0));
+    assert_eq!(requimd(&dir, &["check", "--strict"]).status.code(), Some(1));
 }
 
 #[test]
 fn fr_303_init_creates_files_and_never_overwrites() {
     let dir = temp_dir("init");
-    let o = reqmd(&dir, &["init"]);
+    let o = requimd(&dir, &["init"]);
     assert_eq!(o.status.code(), Some(0));
     assert!(
-        fs::read_to_string(dir.join("reqmd.toml"))
+        fs::read_to_string(dir.join("requimd.toml"))
             .unwrap()
             .contains("[types.usecase]")
     );
     assert_eq!(fs::read_to_string(dir.join("glossary.md")).unwrap(), "");
-    assert_eq!(reqmd(&dir, &["check"]).status.code(), Some(0));
+    assert_eq!(requimd(&dir, &["check"]).status.code(), Some(0));
 
-    write(&dir, "reqmd.toml", "# mine\n");
+    write(&dir, "requimd.toml", "# mine\n");
     write(&dir, "glossary.md", "## Cart\n");
-    let o = reqmd(&dir, &["init"]);
+    let o = requimd(&dir, &["init"]);
     assert_eq!(o.status.code(), Some(0));
     assert!(stdout(&o).contains("left unchanged"));
     assert_eq!(
-        fs::read_to_string(dir.join("reqmd.toml")).unwrap(),
+        fs::read_to_string(dir.join("requimd.toml")).unwrap(),
         "# mine\n"
     );
     assert_eq!(
@@ -232,26 +232,26 @@ fn test_names() -> Vec<String> {
 #[test]
 fn fr_304_fmt_assigns_ids_and_normalises_metadata() {
     let dir = temp_dir("fmt");
-    write(&dir, "reqmd.toml", "");
+    write(&dir, "requimd.toml", "");
     let text = "## FR-001 A\nprio:   must\tstatus: draft\n\n## FR-? B\n";
     write(&dir, "a.md", text);
-    let o = reqmd(&dir, &["fmt", "--check"]);
+    let o = requimd(&dir, &["fmt", "--check"]);
     assert_eq!(o.status.code(), Some(1));
     assert_eq!(stdout(&o), "would format a.md\n");
     assert_eq!(fs::read_to_string(dir.join("a.md")).unwrap(), text);
 
-    let o = reqmd(&dir, &["fmt"]);
+    let o = requimd(&dir, &["fmt"]);
     assert_eq!(o.status.code(), Some(0));
     assert_eq!(
         fs::read_to_string(dir.join("a.md")).unwrap(),
         "## FR-001 A\nprio: must  status: draft\n\n## FR-002 B\n"
     );
-    assert_eq!(reqmd(&dir, &["fmt", "--check"]).status.code(), Some(0));
+    assert_eq!(requimd(&dir, &["fmt", "--check"]).status.code(), Some(0));
 }
 
 #[test]
 fn fr_305_show_item_and_step_with_references() {
-    let o = reqmd(&examples("shop"), &["show", "FR-104"]);
+    let o = requimd(&examples("shop"), &["show", "FR-104"]);
     assert_eq!(o.status.code(), Some(0));
     let out = stdout(&o);
     assert!(out.starts_with("FR-104 VAT per line item\n"), "{out}");
@@ -264,7 +264,7 @@ fn fr_305_show_item_and_step_with_references() {
         "{out}"
     );
 
-    let out = stdout(&reqmd(&examples("shop"), &["show", "UC-012.s2"]));
+    let out = stdout(&requimd(&examples("shop"), &["show", "UC-012.s2"]));
     assert!(
         out.contains("FR-104") && out.contains("FR-105") && out.contains("NFR-007"),
         "{out}"
@@ -272,17 +272,19 @@ fn fr_305_show_item_and_step_with_references() {
     assert!(!out.contains("FR-101"), "{out}");
 
     assert_eq!(
-        reqmd(&examples("shop"), &["show", "FR-999"]).status.code(),
+        requimd(&examples("shop"), &["show", "FR-999"])
+            .status
+            .code(),
         Some(1)
     );
     assert_eq!(
-        reqmd(&examples("shop"), &["show", "nonsense"])
+        requimd(&examples("shop"), &["show", "nonsense"])
             .status
             .code(),
         Some(2)
     );
     assert_eq!(
-        reqmd(&examples("broken"), &["show", "FR-001"])
+        requimd(&examples("broken"), &["show", "FR-001"])
             .status
             .code(),
         Some(1)
@@ -291,12 +293,12 @@ fn fr_305_show_item_and_step_with_references() {
 
 #[test]
 fn fr_306_coverage_per_use_case() {
-    let out = stdout(&reqmd(&examples("broken"), &["coverage"]));
+    let out = stdout(&requimd(&examples("broken"), &["coverage"]));
     assert_eq!(
         out,
         "UC-001 Checkout: 3 steps, 1 covered\n  uncovered: s2, s2\ntotal: 3 steps, 1 covered (33 %)\n"
     );
-    let out = stdout(&reqmd(&examples("shop"), &["coverage"]));
+    let out = stdout(&requimd(&examples("shop"), &["coverage"]));
     assert!(
         out.ends_with("total: 4 steps, 4 covered (100 %)\n"),
         "{out}"
@@ -312,7 +314,7 @@ fn frame(body: &str) -> String {
 fn fr_308_lsp_command_speaks_lsp_over_stdio() {
     use std::io::{Read, Write};
     use std::process::Stdio;
-    let mut child = Command::new(env!("CARGO_BIN_EXE_reqmd"))
+    let mut child = Command::new(env!("CARGO_BIN_EXE_requimd"))
         .arg("lsp")
         .current_dir(examples("shop"))
         .stdin(Stdio::piped())
@@ -352,7 +354,7 @@ fn nfr_007_neovim_builtin_client_without_plugins() {
     }
     let o = Command::new(nvim)
         .args(["--headless", "--clean", "-l", "scripts/nvim-check.lua"])
-        .arg(env!("CARGO_BIN_EXE_reqmd"))
+        .arg(env!("CARGO_BIN_EXE_requimd"))
         .current_dir(repo())
         .output()
         .unwrap();

@@ -1,6 +1,6 @@
 # Requirements specification
 
-This directory is the specification of reqmd, written in the reqmd format.
+This directory is the specification of requimd, written in the requimd format.
 It is both the spec and the first real test case for the tool.
 
 ## Reading order
@@ -28,7 +28,7 @@ It is both the spec and the first real test case for the tool.
 
 ## Status and priority
 
-Every item is `draft` unless it says otherwise (see `reqmd.toml`). Only the
+Every item is `draft` unless it says otherwise (see `requimd.toml`). Only the
 product owner sets `approved` (BR-004).
 
 Priority follows MoSCoW. The milestone an item belongs to is defined in

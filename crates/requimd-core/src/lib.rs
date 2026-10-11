@@ -1,4 +1,4 @@
-//! Configuration, parser and item model of reqmd.
+//! Configuration, parser and item model of requimd.
 //!
 //! Positions are byte offsets into the source text. Conversion to lines and
 //! columns happens only at the output boundary (CLI, LSP).

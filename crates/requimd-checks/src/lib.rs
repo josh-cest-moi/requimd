@@ -1,4 +1,4 @@
-//! Checks on the reqmd item graph (FR-100 ff.).
+//! Checks on the requimd item graph (FR-100 ff.).
 //!
 //! Every check has an ID and a default severity; the configuration may
 //! override or disable it (FR-117).
@@ -8,8 +8,8 @@ use std::ops::Range;
 
 mod language;
 
-use reqmd_core::config::{IMPL, REF, STEP, USECASE};
-use reqmd_core::{Diagnostic, FileId, Item, Level, Project, Reference, Resolution, Severity};
+use requimd_core::config::{IMPL, REF, STEP, USECASE};
+use requimd_core::{Diagnostic, FileId, Item, Level, Project, Reference, Resolution, Severity};
 
 /// Runs all checks and returns the diagnostics sorted by file and position.
 pub fn check(project: &Project) -> Vec<Diagnostic> {

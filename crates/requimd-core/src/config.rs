@@ -8,7 +8,7 @@ use serde::Deserialize;
 
 use crate::diag::Level;
 
-pub const CONFIG_FILE: &str = "reqmd.toml";
+pub const CONFIG_FILE: &str = "requimd.toml";
 
 /// Item type whose items have steps (FR-006).
 pub const USECASE: &str = "usecase";
@@ -93,9 +93,9 @@ pub const CHECK_IDS: &[&str] = &[
     "unused-allow",
 ];
 
-/// Written by `reqmd init` (FR-303). Without the glossary line it is also
+/// Written by `requimd init` (FR-303). Without the glossary line it is also
 /// the source of the built-in defaults (FR-014), so both cannot diverge.
-pub const INIT_TEMPLATE: &str = r#"# reqmd configuration. Every section is optional; a missing section or
+pub const INIT_TEMPLATE: &str = r#"# requimd configuration. Every section is optional; a missing section or
 # entry uses the built-in default shown here (FR-014). An entry such as
 # [types.quality] replaces the default entry of the same name completely.
 
@@ -252,7 +252,7 @@ impl fmt::Display for ConfigError {
 impl std::error::Error for ConfigError {}
 
 /// FR-013: the nearest directory, starting at `start`, that contains
-/// `reqmd.toml`. A file as start means its directory.
+/// `requimd.toml`. A file as start means its directory.
 pub fn find_root(start: &Path) -> Option<PathBuf> {
     let start = std::path::absolute(start).ok()?;
     let dir = if start.is_file() {
@@ -273,7 +273,7 @@ impl Config {
         raw.into_config(None)
     }
 
-    /// Reads `reqmd.toml` in `root` and merges it with the defaults.
+    /// Reads `requimd.toml` in `root` and merges it with the defaults.
     pub fn load(root: &Path) -> Result<Config, ConfigError> {
         let path = root.join(CONFIG_FILE);
         let text = std::fs::read_to_string(&path).map_err(|e| ConfigError {
@@ -692,8 +692,8 @@ mod tests {
 
     #[test]
     fn fr_014_defaults_match_reference_config() {
-        // The reference reqmd.toml adds only project-specific settings.
-        let text = include_str!("../../../reqmd.toml");
+        // The reference requimd.toml adds only project-specific settings.
+        let text = include_str!("../../../requimd.toml");
         let mut reference = Config::from_toml(text, None).unwrap();
         let defaults = Config::defaults().unwrap();
         for t in &mut reference.types {

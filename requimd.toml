@@ -1,4 +1,4 @@
-# reqmd configuration. Makes this repository a reqmd project (dogfooding).
+# requimd configuration. Makes this repository a requimd project (dogfooding).
 
 [project]
 include = ["requirements/**/*.md"]

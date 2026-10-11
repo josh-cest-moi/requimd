@@ -15,7 +15,7 @@ unpleasant to write by hand.
 
 ## Vision
 
-For business analysts who write requirements as text, reqmd is a
+For business analysts who write requirements as text, requimd is a
 lightweight requirements toolset that keeps requirements as plain Markdown
 in git and adds validation, traceability and editor support. Unlike wiki
 pages or heavyweight requirements tools, it makes writing requirements as

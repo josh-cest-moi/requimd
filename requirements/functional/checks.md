@@ -89,7 +89,7 @@ Matching rules:
   straight or typographic (for example UI labels such as "Quick order").
 - The text is the item body without the metadata block.
 
-The list is configured in `reqmd.toml` under `[checks.weak-word]` as
+The list is configured in `requimd.toml` under `[checks.weak-word]` as
 `words`, each entry with the word `w` and the reason `why`. Configured words
 extend the built-in list; a built-in word is switched off by the `allow`
 list (FR-119). The built-in list contains at least `fast`, `quick`,
@@ -176,9 +176,9 @@ The system shall not report a weak-word, modal-verb or glossary-alias
 diagnostic for an occurrence that is allowed:
 
 - project-wide, if the word or phrase is in the `allow` list of that check
-  in `reqmd.toml`;
+  in `requimd.toml`;
 - for one line, if that line ends with a marker of the form
-  `<!-- reqmd: allow <word or phrase> -->`. A comma separates multiple
+  `<!-- requimd: allow <word or phrase> -->`. A comma separates multiple
   entries.
 
 Each entry of a marker that allows nothing on its line shall itself produce
@@ -186,5 +186,5 @@ a diagnostic (check `unused-allow`, severity warning), so stale markers are
 found.
 
 ```markdown
-The Fast Track page shall load the order form. <!-- reqmd: allow fast -->
+The Fast Track page shall load the order form. <!-- requimd: allow fast -->
 ```
