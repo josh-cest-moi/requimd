@@ -145,10 +145,18 @@ the heading.
 impl: UC-004.s1, UC-004.s2, UC-004.s3  prio: should  check: suspect-link  sev: warning
 
 The system shall store, per link, a content hash of the target as of the
-last review in the lock file. If the current hash of the target differs, the
-system shall report a diagnostic at the link. For a step target, the hash
-covers the step text; for an item, title, metadata and body. Links without
-an entry in the lock file are recorded silently on their first check.
+last review in the lock file (ADR-0007). If the current hash of the target
+differs, the system shall report a diagnostic at the link. For a step
+target, the hash covers the step text; for an item, the title, the metadata
+except `status`, and the body. Runs of whitespace, including line breaks,
+count as one space, so re-wrapping text does not make a link suspect.
+
+Links without an entry in the lock file are recorded silently with the
+current hash on their first check; entries of links that no longer exist
+are removed. A check never changes the hash of an existing entry; only a
+review does (FR-218, FR-307). Links from items without a unique ID
+(placeholders, duplicates) are recorded once the item has one. Mentions are
+not links and are never suspect.
 
 ## FR-117 Check configuration
 impl: UC-003.s3  prio: must

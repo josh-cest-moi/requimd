@@ -88,7 +88,9 @@ impl: UC-001.s4  prio: must
 The language server shall offer a code action on a placeholder ID that
 replaces it with the next free ID of its prefix. The next free ID is one
 higher than the highest ID of that prefix in the project and in the lock
-file, so deleted IDs are not reused (BR-002).
+file, so deleted IDs are not reused (BR-002). The lock file keeps the
+highest number per prefix ever seen, also after the item is deleted
+(ADR-0007).
 
 ## FR-213 Create stub
 impl: UC-001.s2a  prio: should
@@ -104,7 +106,8 @@ its use case instead. The stub is inserted in the file set by `stub-file`
 impl: UC-005.s1, UC-005.s2, UC-005.s1a  prio: should
 
 The language server shall support renaming an item ID, updating the
-declaration and all references across all files. It shall refuse the rename
+declaration, all references across all files and the entries of that ID in
+the lock file, so a rename makes no link suspect. It shall refuse the rename
 if the new ID is invalid (BR-001), already exists or has a different
 prefix.
 
@@ -132,7 +135,9 @@ and diagnostics.
 impl: UC-004.s4, UC-004.s5  prio: should
 
 The language server shall offer a code action on a suspect link that
-records the current target hash in the lock file (FR-116).
+records the current target hash in the lock file (FR-116). When a document
+is saved, the language server shall record its new links in the lock file,
+as a check does.
 
 ## FR-219 Language check code actions
 impl: UC-001.s3a  prio: should

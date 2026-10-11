@@ -15,6 +15,12 @@ so references into other files resolve; the paths only select the files
 whose diagnostics are printed. Paths that belong to different projects are
 a usage error.
 
+`requimd check` updates the lock file as described in FR-116 and FR-212.
+With `--locked` it writes nothing and ends with exit code 1 if the lock file
+is out of date, for use in CI. If the lock file cannot be read, for example
+because of merge conflict markers, it ends with exit code 2 and leaves the
+file unchanged.
+
 ## FR-301 Machine-readable output
 impl: UC-003.s3  prio: must
 
@@ -58,7 +64,9 @@ the number of steps, the number of covered steps and the uncovered steps.
 impl: UC-004.s4, UC-004.s5  prio: should
 
 The system shall provide `requimd review <ID>`, which marks all suspect links
-from or to the item as reviewed (FR-116).
+from or to the item as reviewed (FR-116). With `--all` instead of an ID, it
+marks every suspect link of the project as reviewed. It prints each link it
+marks.
 
 ## FR-308 LSP command
 impl: UC-007.s3  prio: must

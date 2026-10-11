@@ -37,12 +37,19 @@ As of 2026-10-12. Update this file at the end of every working session.
   `EXPECTED.md`. All M3 features also pass in Neovim 0.12.6
   (`scripts/nvim-check.lua`). The server caches parse results of unchanged
   files; NFR-001 p95 is 77 ms in a release build (plan: 100 ms).
-- **M4 Impact analysis: next** (lock file ADR first).
+- **M4 Impact analysis: next.** Lock file decided (ADR-0007); spec
+  updated (FR-116, FR-212, FR-214, FR-218, FR-300, FR-307).
 
 ## Decision log
 
 | Date | Decision | Where recorded |
 |------|----------|----------------|
+| 2026-10-12 | Lock file `requimd.lock` in TOML, sorted, one line per link, plus `[ids]` | ADR-0007 |
+| 2026-10-12 | `check` adds and removes lock entries but never changes a hash; `--locked` for CI; the language server records on save | ADR-0007, FR-116, FR-300, FR-218 |
+| 2026-10-12 | Suspect-link hash ignores `status` and whitespace | ADR-0007, FR-116 |
+| 2026-10-12 | `requimd review --all` marks all suspect links as reviewed | FR-307 |
+| 2026-10-12 | Hash only; showing what changed via git history is on the "Later" list | ADR-0007, `docs/roadmap.md` |
+| 2026-10-12 | No lock entries for items without a unique ID; `[ids]` never decreases; rename rewrites lock entries; unreadable lock stops check (exit 2) | ADR-0007, FR-116, FR-212, FR-214, FR-300 |
 | 2026-10-12 | Language server resolves paths to their real spelling and rescans the disk on file events that do not fit it (Neovim on Windows, 8.3 short paths) | FR-217, `crates/requimd-lsp/src/server.rs` |
 | 2026-10-12 | Project name requimd (formerly reqmd), spoken "requi-m-d"; binary, config, lock file, marker and crates renamed | ADR-0006 |
 | 2026-10-12 | Configured `words` extend the built-in lists; `allow` switches words off | FR-110, FR-118 |
@@ -127,21 +134,19 @@ As of 2026-10-12. Update this file at the end of every working session.
 
 ### Technical
 
-1. **Lock file format** (JSON or TOML, merge conflict behaviour): own ADR
-   before M4.
-2. Fixed meanings in code: item type `usecase` has steps, link key `impl`
+1. Fixed meanings in code: item type `usecase` has steps, link key `impl`
    covers steps, `ref` is checked for cycles. Fine for now; configurable
    later if needed.
 
 ## Next steps
 
-1. Push the Windows fix and check that the Windows job is green; then
-   remove `continue-on-error` for Windows in `.github/workflows/ci.yml`.
+1. Windows CI is green since 2026-10-12: remove `continue-on-error` for
+   Windows in `.github/workflows/ci.yml` (NFR-004 `plan`).
 2. Owner: try the M3 features in Neovim (`docs/neovim.md`, including the
    optional code lens handler) and review the interpretations above.
-3. ADR for the lock file format (technical question 1), then M4: suspect
-   links (FR-116), mark reviewed (FR-218), `requimd review` (FR-307), and
-   the lock file in FR-212 (BR-002).
+3. M4 per ADR-0007: lock file in `requimd-core`, suspect links (FR-116),
+   `check --locked` (FR-300), mark reviewed and record on save (FR-218),
+   `requimd review` (FR-307), lock file in FR-212 and FR-214.
 
 ## Related documents outside the repo
 

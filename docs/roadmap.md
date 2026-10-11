@@ -38,7 +38,9 @@ Goal: writing and navigating in Neovim 0.12 without plugins.
 
 ## M4 Impact analysis (next)
 
-- FR-116, FR-218, FR-307, lock file format decided in an ADR
+- Lock file format: ADR-0007 (accepted)
+- FR-116, FR-218, FR-307; lock file in FR-212, FR-214 and FR-300
+  (`--locked`)
 
 ## M5 Publishing
 
@@ -53,3 +55,5 @@ Goal: writing and navigating in Neovim 0.12 without plugins.
 - On-demand AI review for ambiguity and contradictions (stage 3, ADR-0005)
 - Further pattern rules: comparatives without reference, passive voice
   without actor
+- Show what changed in the target of a suspect link, from git history
+  (ADR-0007)

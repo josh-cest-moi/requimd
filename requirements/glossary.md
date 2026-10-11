@@ -71,8 +71,9 @@ A link whose target has changed since the link was last reviewed.
 
 ## Lock file
 
-The file `requimd.lock` in the project root that records review state of
-links and the highest assigned number per prefix.
+The file `requimd.lock` in the project root that records the review state
+of links and the highest assigned number per prefix (ADR-0007). It is
+committed with the specification.
 
 ## Coverage
 
