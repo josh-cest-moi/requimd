@@ -58,8 +58,8 @@ status = "draft"
 # Severity overrides by check id, e.g.:
 # uncovered-step = "info"
 
-# Language checks (FR-110, FR-118, FR-119). Without `words`, the built-in
-# default lists apply. Example:
+# Language checks (FR-110, FR-118, FR-119). Configured `words` extend the
+# built-in lists; `allow` switches words off. Example:
 # [checks.weak-word]
 # words = [{ w = "seamless", why = "marketing word; describe the behaviour" }]
 # allow = ["Fast Track"]

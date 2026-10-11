@@ -9,7 +9,7 @@ impl: UC-003.s3  prio: must  check: duplicate-id  sev: error
 If two items declare the same ID, the system shall report a diagnostic at
 each declaration. References to a duplicated ID shall resolve to no item and
 produce no further diagnostics, so the duplicate is the only finding. Links
-from the duplicated items themselves are evaluated normally.
+from the duplicated items themselves are still evaluated.
 
 ## FR-101 Dangling references
 impl: UC-001.s2a, UC-003.s3  prio: must  check: dangling-ref  sev: error
@@ -85,14 +85,17 @@ Matching rules:
   matches as a unit, with any whitespace between its words.
 - No wildcards or stemming. Word forms are separate entries, such as `quick`
   and `quickly`.
-- Ignored: code spans, code blocks, item IDs and text in double quotes (for
-  example UI labels such as "Quick order").
+- Ignored: code spans, code blocks, item IDs and text in double quotes,
+  straight or typographic (for example UI labels such as "Quick order").
+- The text is the item body without the metadata block.
 
 The list is configured in `reqmd.toml` under `[checks.weak-word]` as
-`words`, each entry with the word `w` and the reason `why`. The default list
-contains at least `fast`, `quick`, `quickly`, `easy`, `user-friendly`,
-`intuitive`, `flexible`, `robust`, `appropriate`, `adequate`, `several`,
-`etc.`, `and/or`, `as needed` and `if possible`, each with a reason.
+`words`, each entry with the word `w` and the reason `why`. Configured words
+extend the built-in list; a built-in word is switched off by the `allow`
+list (FR-119). The built-in list contains at least `fast`, `quick`,
+`quickly`, `easy`, `user-friendly`, `intuitive`, `flexible`, `robust`,
+`appropriate`, `adequate`, `several`, `etc.`, `and/or`, `as needed` and `if
+possible`, each with a reason.
 
 ```toml
 [checks.weak-word]
@@ -129,7 +132,8 @@ impl: UC-001.s3  prio: should  check: glossary-alias  sev: warning
 
 If the title or text of an item uses an alias of a glossary term, the system
 shall report a diagnostic that names the preferred term. Matching follows the
-rules of FR-110.
+rules of FR-110. An alias inside an occurrence of a glossary term is not
+reported.
 
 ## FR-115 Remaining placeholders
 impl: UC-003.s3  prio: must  check: placeholder  sev: warning
@@ -161,8 +165,8 @@ impl: UC-001.s3  prio: should  check: modal-verb  sev: warning
 If the title or text of a functional requirement contains a configured modal
 verb other than "shall", the system shall report a diagnostic at the word
 that suggests "shall". The default list is `should`, `may`, `can`, `could`,
-`might` and `will`; it is configured under `[checks.modal-verb]` as `words`.
-Matching follows the rules of FR-110. This check is separate from FR-110 and
+`might` and `will`; configured `words` under `[checks.modal-verb]` extend
+it. Matching follows the rules of FR-110. This check is separate from FR-110 and
 is configured independently.
 
 ## FR-119 Allow lists and inline markers
@@ -177,8 +181,9 @@ diagnostic for an occurrence that is allowed:
   `<!-- reqmd: allow <word or phrase> -->`. A comma separates multiple
   entries.
 
-A marker that allows nothing on its line shall itself produce a diagnostic
-(check `unused-allow`, severity warning), so stale markers are found.
+Each entry of a marker that allows nothing on its line shall itself produce
+a diagnostic (check `unused-allow`, severity warning), so stale markers are
+found.
 
 ```markdown
 The Fast Track page shall load the order form. <!-- reqmd: allow fast -->

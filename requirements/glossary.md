@@ -52,7 +52,6 @@ An untyped reference to an item ID in the running text of an item.
 Either a link or a mention.
 
 ## Use case step
-alias: step
 
 A numbered action in the flow of a use case, identified by a step label.
 

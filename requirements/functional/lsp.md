@@ -67,7 +67,8 @@ impl: UC-002.s3  prio: should
 
 The language server shall offer an inlay hint after each reference in a
 metadata block, showing the title of the target item or the text of the
-target step, shortened to a configurable length.
+target step, shortened to `hint-length` characters (`[lsp]` section,
+default 40).
 
 ## FR-210 Document symbols
 impl: UC-002.s1  prio: must
@@ -95,21 +96,23 @@ impl: UC-001.s2a  prio: should
 The language server shall offer code actions that create a stub item with a
 placeholder ID and a link: on a dangling reference, a stub with that ID; on
 an uncovered step, a functional requirement stub with `impl` to the step.
-The stub is inserted in a configurable file or at the end of the current
-file.
+On a dangling step reference, the missing step is appended to the steps of
+its use case instead. The stub is inserted in the file set by `stub-file`
+(`[lsp]` section) or, if unset, at the end of the current file.
 
 ## FR-214 Rename
 impl: UC-005.s1, UC-005.s2, UC-005.s1a  prio: should
 
 The language server shall support renaming an item ID, updating the
 declaration and all references across all files. It shall refuse the rename
-if the new ID is invalid (BR-001) or already exists.
+if the new ID is invalid (BR-001), already exists or has a different
+prefix.
 
 ## FR-215 Code lens on steps
 impl: UC-002.s1  prio: should
 
 The language server shall show a code lens on each use case step with the
-number of implementing items; executing it lists them as in FR-208.
+number and IDs of implementing items; executing it lists them as in FR-208.
 
 ## FR-216 Semantic tokens
 impl: UC-001.s3  prio: could
@@ -137,8 +140,8 @@ impl: UC-001.s3a  prio: should
 The language server shall offer these code actions:
 
 - **Add to weak words**, on any word or selected phrase without a
-  diagnostic: adds it to `words` of `[checks.weak-word]`, asking for an
-  optional reason.
+  diagnostic: adds it to `words` of `[checks.weak-word]` with an empty
+  reason and opens `reqmd.toml` at that entry for the reason.
 - **Allow here**, on a weak-word, modal-verb or glossary-alias diagnostic:
   adds or extends the inline marker of FR-119 on that line.
 - **Allow in project**, on the same diagnostics: adds the word to the
