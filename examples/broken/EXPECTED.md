@@ -1,8 +1,8 @@
 # Expected diagnostics for broken.md
 
-Line numbers refer to `broken.md`. Checks marked (M3) are expected once that
-milestone is implemented. This file has no items and must produce no
-diagnostics. The example uses the built-in default lists (FR-014, FR-110,
+Line numbers refer to `broken.md`. Checks marked (M3) belong to that
+milestone; since M3 all rows are expected. This file has no items and must
+produce no diagnostics. The example uses the built-in default lists (FR-014, FR-110,
 FR-118).
 
 | Line | Check | Severity | Reason |

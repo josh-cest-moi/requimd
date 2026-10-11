@@ -13,20 +13,22 @@ as product owner.
 Specification done (M0); M1 (parser and `reqmd check`), M2 (language
 server, `reqmd lsp`) and M3 (glossary, language checks, authoring features)
 implemented in the cargo workspace under `crates/`. Next is milestone M4 in
-`docs/roadmap.md`, starting with an ADR for the lock file. Language server features are
-checked in real Neovim by `scripts/nvim-check.lua`. **Read `docs/status.md` first**: it holds the decision
-log, open questions and next steps.
+`docs/roadmap.md`, starting with an ADR for the lock file. **Read
+`docs/status.md` first**: it holds the decision log, open questions and
+next steps.
 
 Implementation language is Rust (ADR-0001, accepted). Markdown parser
 pulldown-cmark and LSP library lsp-server (ADR-0003, accepted 2026-10-10).
 
-## First session
+## Starting a milestone
 
-1. Read `docs/status.md`, `requirements/README.md` and the M1 items.
-2. Ask the owner to confirm ADR-0003. Then set its status to accepted with
-   the date.
-3. Propose the cargo workspace layout and wait for a go.
-4. Create the workspace and the CI workflow (ADR-0004), then implement M1.
+1. Read `docs/status.md`, `requirements/README.md` and the items of the
+   milestone in `docs/roadmap.md`.
+2. Check the items against the code and the fixtures; ask the owner about
+   gaps and ambiguities before implementing, then record the answers in the
+   spec (separate commit) and in the decision log.
+3. Implement, test, and verify language server features in real Neovim
+   with `scripts/nvim-check.lua`.
 
 ## Source of truth
 
