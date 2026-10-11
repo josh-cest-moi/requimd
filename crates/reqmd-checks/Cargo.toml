@@ -1,0 +1,13 @@
+[package]
+name = "reqmd-checks"
+description = "Checks on the reqmd item graph"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+reqmd-core.workspace = true
+
+[lints]
+workspace = true

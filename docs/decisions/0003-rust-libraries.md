@@ -1,7 +1,7 @@
 # ADR-0003 Markdown parser and LSP library
 
-Status: **proposed** – the product owner is still comparing. Confirm before
-the parser is written (start of M1). The LSP part is needed from M2.
+Status: **accepted** on 2026-10-10 by the product owner: pulldown-cmark as
+Markdown parser, lsp-server with lsp-types as LSP library.
 
 Full comparison with sources: Claude Doc "reqmd Parser and LSP Library
 Comparison" (2026-10-10). Versions as found on 2026-10-09; check again when
@@ -45,4 +45,13 @@ makes debouncing for NFR-001 easier to control.
 
 ## Consequences
 
-To be written when accepted.
+- The parser consumes pulldown-cmark's event stream with byte ranges and
+  builds reqmd's own item model; there is no intermediate Markdown tree.
+  Positions stay byte offsets until the LSP boundary.
+- pulldown-cmark knows nothing about items, metadata blocks or mentions.
+  reqmd recognises them itself on the text of headings and paragraphs,
+  skipping code (FR-009).
+- The language server (M2) runs its own synchronous loop on lsp-server's
+  channels; debouncing and cancellation for NFR-001 are reqmd code.
+- No tokio or other async runtime in the dependency tree (NFR-005).
+- Versions are checked again when each dependency is added to `Cargo.toml`.

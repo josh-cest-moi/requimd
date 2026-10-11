@@ -10,13 +10,12 @@ as product owner.
 
 ## Status
 
-Specification done (M0), no code yet. Next is milestone M1 in
-`docs/roadmap.md`. **Read `docs/status.md` first**: it holds the decision
+Specification done (M0), M1 (parser and `reqmd check`) implemented in the
+cargo workspace under `crates/`. Next is milestone M2 in `docs/roadmap.md`. **Read `docs/status.md` first**: it holds the decision
 log, open questions and next steps.
 
-Implementation language is Rust (ADR-0001, accepted). Before writing the
-parser, confirm ADR-0003 (Markdown parser and LSP library) with the owner;
-it is still *proposed* (pulldown-cmark and lsp-server).
+Implementation language is Rust (ADR-0001, accepted). Markdown parser
+pulldown-cmark and LSP library lsp-server (ADR-0003, accepted 2026-10-10).
 
 ## First session
 

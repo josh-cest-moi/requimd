@@ -1,0 +1,220 @@
+//! The `reqmd` binary (FR-300 ff.).
+
+use std::fs::OpenOptions;
+use std::io::{self, Write};
+use std::path::{Path, PathBuf};
+use std::process::ExitCode;
+
+use clap::{Parser, Subcommand, ValueEnum};
+use reqmd_core::config::{CONFIG_FILE, INIT_TEMPLATE};
+use reqmd_core::{Config, Diagnostic, Project, Severity, find_root};
+use serde::Serialize;
+
+#[derive(Parser)]
+#[command(name = "reqmd", version, about = "Requirements in Markdown")]
+struct Cli {
+    #[command(subcommand)]
+    command: Command,
+}
+
+#[derive(Subcommand)]
+enum Command {
+    /// Check the project and print one line per diagnostic.
+    Check {
+        /// Only print diagnostics for these files or directories.
+        paths: Vec<PathBuf>,
+        /// Output format.
+        #[arg(long, value_enum, default_value_t = Format::Text)]
+        format: Format,
+        /// Treat warnings as errors for the exit code.
+        #[arg(long)]
+        strict: bool,
+    },
+    /// Create reqmd.toml and an empty glossary in the current directory.
+    Init,
+}
+
+#[derive(Clone, Copy, ValueEnum)]
+enum Format {
+    Text,
+    Json,
+}
+
+/// FR-300: exit codes.
+const OK: u8 = 0;
+const FOUND: u8 = 1;
+const USAGE: u8 = 2;
+
+fn main() -> ExitCode {
+    let cli = Cli::parse();
+    let code = match cli.command {
+        Command::Check {
+            paths,
+            format,
+            strict,
+        } => check(&paths, format, strict),
+        Command::Init => init(),
+    };
+    ExitCode::from(code)
+}
+
+/// FR-300 to FR-302.
+fn check(paths: &[PathBuf], format: Format, strict: bool) -> u8 {
+    let cwd = match std::env::current_dir() {
+        Ok(d) => d,
+        Err(e) => return fail(&format!("current directory: {e}")),
+    };
+    let mut filters = Vec::new();
+    for p in paths {
+        if !p.exists() {
+            return fail(&format!("{}: no such file or directory", p.display()));
+        }
+        match std::path::absolute(p) {
+            Ok(a) => filters.push(a),
+            Err(e) => return fail(&format!("{}: {e}", p.display())),
+        }
+    }
+    let start = filters.first().cloned().unwrap_or_else(|| cwd.clone());
+    let Some(root) = find_root(&start) else {
+        return fail(&format!(
+            "no {CONFIG_FILE} found in {} or its parents; run `reqmd init`",
+            start.display()
+        ));
+    };
+    for f in &filters {
+        if find_root(f).as_deref() != Some(root.as_path()) {
+            return fail(&format!(
+                "{} does not belong to the project at {}",
+                f.display(),
+                root.display()
+            ));
+        }
+    }
+    let config = match Config::load(&root) {
+        Ok(c) => c,
+        Err(e) => return fail(&e.to_string()),
+    };
+    let project = match Project::load(&root, config) {
+        Ok(p) => p,
+        Err(e) => return fail(&e.to_string()),
+    };
+
+    let diags: Vec<Diagnostic> = reqmd_checks::check(&project)
+        .into_iter()
+        .filter(|d| {
+            filters.is_empty()
+                || project
+                    .files
+                    .get(d.file)
+                    .is_some_and(|f| filters.iter().any(|p| f.path.starts_with(p)))
+        })
+        .collect();
+
+    let out = render(&project, &diags, &cwd, format);
+    if let Err(e) = io::stdout().lock().write_all(out.as_bytes()) {
+        // A closed pipe is not worth a message.
+        if e.kind() != io::ErrorKind::BrokenPipe {
+            return fail(&e.to_string());
+        }
+    }
+
+    let failing = diags
+        .iter()
+        .any(|d| d.severity == Severity::Error || (strict && d.severity == Severity::Warning));
+    if failing { FOUND } else { OK }
+}
+
+#[derive(Serialize)]
+struct JsonDiagnostic<'a> {
+    file: String,
+    line: usize,
+    column: usize,
+    end_line: usize,
+    end_column: usize,
+    severity: &'static str,
+    check: &'static str,
+    message: &'a str,
+}
+
+/// FR-300: `file:line:column: severity: message [check-id]`, or a JSON array
+/// for `--format json` (FR-301).
+fn render(project: &Project, diags: &[Diagnostic], cwd: &Path, format: Format) -> String {
+    let rows: Vec<JsonDiagnostic> = diags
+        .iter()
+        .filter_map(|d| {
+            let f = project.files.get(d.file)?;
+            let (line, column) = f.line_col(d.span.start);
+            let (end_line, end_column) = f.line_col(d.span.end);
+            Some(JsonDiagnostic {
+                file: display_path(&f.path, cwd),
+                line,
+                column,
+                end_line,
+                end_column,
+                severity: d.severity.as_str(),
+                check: d.check,
+                message: &d.message,
+            })
+        })
+        .collect();
+    match format {
+        Format::Text => rows
+            .iter()
+            .map(|r| {
+                format!(
+                    "{}:{}:{}: {}: {} [{}]\n",
+                    r.file, r.line, r.column, r.severity, r.message, r.check
+                )
+            })
+            .collect(),
+        Format::Json => match serde_json::to_string_pretty(&rows) {
+            Ok(s) => s + "\n",
+            Err(_) => "[]\n".into(),
+        },
+    }
+}
+
+/// Path relative to the working directory if below it, with `/` as
+/// separator on every platform (NFR-004).
+fn display_path(path: &Path, cwd: &Path) -> String {
+    let shown = path.strip_prefix(cwd).unwrap_or(path);
+    shown.to_string_lossy().replace('\\', "/")
+}
+
+/// FR-303: creates the configuration and an empty glossary; never
+/// overwrites a file.
+fn init() -> u8 {
+    let glossary = "glossary.md";
+    for (name, content) in [(CONFIG_FILE, INIT_TEMPLATE), (glossary, "")] {
+        match OpenOptions::new().write(true).create_new(true).open(name) {
+            Ok(mut f) => {
+                if let Err(e) = f.write_all(content.as_bytes()) {
+                    return fail(&format!("{name}: {e}"));
+                }
+                println!("created {name}");
+            }
+            Err(e) if e.kind() == io::ErrorKind::AlreadyExists => {
+                println!("{name} exists, left unchanged");
+            }
+            Err(e) => return fail(&format!("{name}: {e}")),
+        }
+    }
+    OK
+}
+
+fn fail(message: &str) -> u8 {
+    eprintln!("reqmd: {message}");
+    USAGE
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn nfr_004_output_paths_use_forward_slashes() {
+        let cwd = Path::new("project");
+        let path = Path::new("project").join("requirements").join("a.md");
+        assert_eq!(display_path(&path, cwd), "requirements/a.md");
+    }
+}
