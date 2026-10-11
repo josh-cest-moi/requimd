@@ -83,13 +83,46 @@ jobs:
           "$exe" check
           "$exe" export site site
           test -f site/index.html
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: ${{ env.ASSET }}
           path: ${{ env.ASSET }}
-      - uses: softprops/action-gh-release@v2
-        if: github.ref_type == 'tag'
+
+  # One job creates the release with all archives, so the text appears once.
+  release:
+    needs: build
+    if: github.ref_type == 'tag'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v8
         with:
-          files: ${{ env.ASSET }}
+          path: dist
+          merge-multiple: true
+      - name: Release text
+        run: |
+          tag="${GITHUB_REF_NAME}"
+          {
+            echo "requimd ${tag}: requirements in Markdown, checked by a command line tool and supported by a language server."
+            echo
+            if [[ "$tag" == *-* ]]; then
+              echo "> **Pre-release for testing.** Behaviour and file formats may still change before the next release."
+              echo
+            fi
+            echo "Download the archive for your system, unpack it and put \`requimd\` (\`requimd.exe\` on Windows) on your \`PATH\`. Nothing else is needed."
+            echo
+            echo "| System | Archive |"
+            echo "|--------|---------|"
+            echo "| Linux x86_64 (static, any distribution) | \`requimd-${tag}-x86_64-unknown-linux-musl.tar.gz\` |"
+            echo "| macOS, Apple silicon | \`requimd-${tag}-aarch64-apple-darwin.tar.gz\` |"
+            echo "| macOS, Intel | \`requimd-${tag}-x86_64-apple-darwin.tar.gz\` |"
+            echo "| Windows x86_64 | \`requimd-${tag}-x86_64-pc-windows-msvc.zip\` |"
+            echo
+            echo "Editor setup: [docs/neovim.md](https://github.com/${GITHUB_REPOSITORY}/blob/${tag}/docs/neovim.md)."
+          } > release-body.md
+          ls dist
+      - uses: softprops/action-gh-release@v3
+        with:
+          files: dist/*
+          body_path: release-body.md
           generate_release_notes: true
           prerelease: ${{ contains(github.ref_name, '-') }}
