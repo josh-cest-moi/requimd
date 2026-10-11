@@ -36,16 +36,24 @@ Goal: writing and navigating in Neovim 0.12 without plugins.
 - LSP: FR-209, FR-213 to FR-215, FR-219
 - CLI: FR-304 to FR-306
 
-## M4 Impact analysis (implemented)
+## M4 Impact analysis (done)
 
 - Lock file format: ADR-0007 (accepted)
 - FR-116, FR-218, FR-307; lock file in FR-212, FR-214 and FR-300
   (`--locked`)
 
-## M5 Publishing (next)
+## M5 Publishing (implemented)
 
-- FR-400 to FR-402, then the `could` items FR-403 to FR-405
-- NFR-005 and release packaging
+- FR-400 to FR-402; FR-405 deprecated (no Confluence; PDFs come from an
+  external Markdown-to-PDF converter)
+- NFR-005 and release packaging: binaries on GitHub Releases for Linux,
+  macOS and Windows; license MIT OR Apache-2.0
+- CI builds the site of this repository as a downloadable artifact;
+  publishing to GitHub Pages later
+
+## After M5
+
+- FR-403 (`requimd diff`) and FR-404 (Mermaid export), in separate commits
 
 ## Later / ideas
 
