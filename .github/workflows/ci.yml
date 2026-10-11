@@ -41,3 +41,17 @@ jobs:
       - run: cargo test --all
       - name: Performance tests in release mode (NFR-001 to NFR-003)
         run: cargo test --release -p requimd-lsp -p requimd-checks nfr_00
+
+  # FR-400: the site of this repository's specification, as a downloadable
+  # artifact. Publishing to GitHub Pages comes later.
+  site:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo run --quiet -- export site site
+      - uses: actions/upload-artifact@v4
+        with:
+          name: requimd-site
+          path: site

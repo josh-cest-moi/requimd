@@ -1,6 +1,7 @@
 //! The `requimd` binary (FR-300 ff.).
 
 mod commands;
+mod export;
 
 use std::fs::OpenOptions;
 use std::io::{self, Write};
@@ -60,8 +61,37 @@ enum Command {
         #[arg(long)]
         all: bool,
     },
+    /// Export the project as static site, traceability matrix or JSON.
+    Export {
+        #[command(subcommand)]
+        what: ExportCommand,
+    },
     /// Start the language server on stdin and stdout.
     Lsp,
+}
+
+#[derive(Subcommand)]
+enum ExportCommand {
+    /// Static website for reading without git or an editor (FR-400).
+    Site {
+        /// Output directory.
+        dir: PathBuf,
+        /// Only items with these statuses, e.g. review,approved.
+        #[arg(long, value_delimiter = ',')]
+        status: Vec<String>,
+    },
+    /// Traceability matrix as CSV (FR-401).
+    Matrix {
+        /// Write to this file instead of standard output.
+        #[arg(long, short)]
+        output: Option<PathBuf>,
+    },
+    /// The item graph as JSON (FR-402).
+    Json {
+        /// Write to this file instead of standard output.
+        #[arg(long, short)]
+        output: Option<PathBuf>,
+    },
 }
 
 #[derive(Clone, Copy, ValueEnum)]
@@ -122,6 +152,8 @@ fn main() -> ExitCode {
                 }
             })
         }
+        // FR-400 to FR-402
+        Command::Export { what } => with_project(|p, _| export(p, what)),
         // FR-308
         Command::Lsp => match requimd_lsp::run_stdio() {
             Ok(()) => OK,
@@ -129,6 +161,42 @@ fn main() -> ExitCode {
         },
     };
     ExitCode::from(code)
+}
+
+/// FR-400 to FR-402.
+fn export(p: &Project, what: ExportCommand) -> u8 {
+    let (output, text) = match what {
+        ExportCommand::Site { dir, status } => {
+            if let Some(allowed) = p.config.values.get("status")
+                && let Some(bad) = status.iter().find(|s| !allowed.contains(s))
+            {
+                return fail(&format!(
+                    "unknown status \"{bad}\"; allowed: {}",
+                    allowed.join(", ")
+                ));
+            }
+            let filter = export::site::Filter((!status.is_empty()).then_some(status));
+            return match export::site::write_site(p, filter, &dir) {
+                Ok(n) => {
+                    println!("wrote {n} pages to {}", dir.display());
+                    OK
+                }
+                Err(e) => fail(&e),
+            };
+        }
+        ExportCommand::Matrix { output } => (output, export::matrix::csv(p)),
+        ExportCommand::Json { output } => (output, export::json::json(p)),
+    };
+    match output {
+        Some(path) => match std::fs::write(&path, text) {
+            Ok(()) => OK,
+            Err(e) => fail(&format!("{}: {e}", path.display())),
+        },
+        None => {
+            print!("{text}");
+            OK
+        }
+    }
 }
 
 /// Loads the project around the working directory and runs `f` on it.

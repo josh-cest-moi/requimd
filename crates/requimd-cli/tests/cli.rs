@@ -424,6 +424,182 @@ fn fr_212_fmt_does_not_reuse_ids_of_deleted_items() {
     );
 }
 
+fn read(path: &Path) -> String {
+    fs::read_to_string(path).unwrap()
+}
+
+#[test]
+fn fr_400_static_site_pages_anchors_links_backlinks() {
+    let out = temp_dir("site");
+    let o = requimd(
+        &examples("shop"),
+        &["export", "site", out.to_str().unwrap()],
+    );
+    assert_eq!(
+        o.status.code(),
+        Some(0),
+        "{}",
+        String::from_utf8_lossy(&o.stderr)
+    );
+    for page in [
+        "index.html",
+        "matrix.html",
+        "functional.html",
+        "usecases.html",
+        "glossary.html",
+    ] {
+        assert!(out.join(page).is_file(), "{page}");
+    }
+    let fr = read(&out.join("functional.html"));
+    // Anchors per item, status badge, metadata with links, mentions.
+    assert!(fr.contains("<h2 id=\"FR-104\" class=\"item\">"), "{fr}");
+    assert!(fr.contains("<span class=\"status status-review\">review</span>"));
+    assert!(fr.contains("<a href=\"usecases.html#UC-012.s2\">UC-012.s2</a>"));
+    assert!(fr.contains("<a href=\"rules.html#BR-003\">BR-003</a>"));
+    // Backlinks: TC-220 verifies FR-104.
+    assert!(
+        fr.contains("Referenced by") && fr.contains("<a href=\"tests.html#TC-220\">TC-220</a>")
+    );
+    // Anchors per step.
+    let uc = read(&out.join("usecases.html"));
+    assert!(uc.contains("<li id=\"UC-012.s2a\">"), "{uc}");
+    // Index lists every item; no JavaScript anywhere; works from files.
+    let index = read(&out.join("index.html"));
+    assert!(index.contains("<a href=\"functional.html#FR-101\">FR-101</a>"));
+    for e in fs::read_dir(&out).unwrap() {
+        let html = read(&e.unwrap().path());
+        assert!(!html.contains("<script"));
+        assert!(!html.contains("href=\"/"), "absolute link");
+    }
+}
+
+#[test]
+fn fr_400_status_filter_and_nested_paths() {
+    let dir = temp_dir("sitefilter");
+    write(&dir, "requimd.toml", "");
+    fs::create_dir_all(dir.join("req/sub")).unwrap();
+    write(
+        &dir,
+        "req/sub/a.md",
+        "## FR-001 Kept\nstatus: review\n\nIt shall, see FR-002.\n",
+    );
+    write(
+        &dir,
+        "req/b.md",
+        "## FR-002 Draft\n\nIt shall. <!-- requimd: allow x -->\n\n<b>raw</b>\n",
+    );
+    let out = dir.join("site");
+    let o = requimd(
+        &dir,
+        &["export", "site", "site", "--status", "review,approved"],
+    );
+    assert_eq!(o.status.code(), Some(0));
+    let a = read(&out.join("req/sub/a.html"));
+    assert!(a.contains("id=\"FR-001\""));
+    // The filtered item is gone, and the mention of it is not a link.
+    assert!(
+        a.contains("<span class=\"unresolved\">FR-002</span>"),
+        "{a}"
+    );
+    assert!(!read(&out.join("req/b.html")).contains("FR-002"));
+    // Without the filter: the comment is left out, raw HTML shown as text.
+    requimd(&dir, &["export", "site", "site"]);
+    let b = read(&out.join("req/b.html"));
+    assert!(
+        !b.contains("requimd: allow") && b.contains("&lt;b&gt;raw"),
+        "{b}"
+    );
+    let a = read(&out.join("req/sub/a.html"));
+    // Links go up to the site root and down again: req/sub/a → req/b.
+    assert!(
+        a.contains("<a href=\"../../req/b.html#FR-002\">FR-002</a>"),
+        "{a}"
+    );
+    assert!(read(&out.join("index.html")).contains("href=\"req/sub/a.html#FR-001\""));
+    // Unknown status: usage error.
+    assert_eq!(
+        requimd(&dir, &["export", "site", "site", "--status", "done"])
+            .status
+            .code(),
+        Some(2)
+    );
+}
+
+#[test]
+fn fr_401_traceability_matrix_csv() {
+    let o = requimd(&examples("shop"), &["export", "matrix"]);
+    assert_eq!(
+        stdout(&o),
+        "use_case,step,text,implemented_by,verified_by\n\
+         UC-012,s1,Customer opens the cart.,FR-101,\n\
+         UC-012,s2,System shows the total incl. VAT.,FR-104 FR-105,TC-220\n\
+         UC-012,s3,Customer confirms the order.,FR-102,\n\
+         UC-012,s2a,\"Cart is empty → system shows a hint, use case ends.\",FR-103,\n"
+    );
+    let out = temp_dir("matrix");
+    let site = out.join("site");
+    requimd(
+        &examples("shop"),
+        &["export", "site", site.to_str().unwrap()],
+    );
+    let m = read(&site.join("matrix.html"));
+    assert!(m.contains("4 steps, 4 implemented, 1 verified."), "{m}");
+    let file = out.join("m.csv");
+    requimd(
+        &examples("shop"),
+        &["export", "matrix", "-o", file.to_str().unwrap()],
+    );
+    assert!(read(&file).starts_with("use_case,step"));
+}
+
+#[test]
+fn fr_402_json_export_of_item_graph() {
+    let o = requimd(&examples("shop"), &["export", "json"]);
+    let v: serde_json::Value = serde_json::from_str(&stdout(&o)).unwrap();
+    assert_eq!(v["format"], 1);
+    let items = v["items"].as_array().unwrap();
+    let fr = items.iter().find(|i| i["id"] == "FR-104").unwrap();
+    assert_eq!(fr["type"], "functional");
+    assert_eq!(fr["status"], "review");
+    assert_eq!(fr["file"], "functional.md");
+    assert_eq!(fr["line"], 21);
+    assert_eq!(fr["meta"]["prio"], "must");
+    assert_eq!(fr["links"][0]["key"], "impl");
+    assert_eq!(fr["links"][0]["target"], "UC-012.s2");
+    assert_eq!(fr["links"][0]["resolved"], true);
+    assert_eq!(fr["mentions"][0]["target"], "BR-003");
+    let uc = items.iter().find(|i| i["id"] == "UC-012").unwrap();
+    assert_eq!(uc["steps"].as_array().unwrap().len(), 4);
+    assert_eq!(uc["fields"]["pre"], "Customer is logged in.");
+}
+
+#[test]
+fn nfr_005_single_binary_runs_alone() {
+    // A copy of the binary in an otherwise empty directory works: no
+    // runtime, libraries or data files next to it are needed.
+    let dir = temp_dir("single");
+    let exe = dir.join(if cfg!(windows) {
+        "requimd.exe"
+    } else {
+        "requimd"
+    });
+    fs::copy(env!("CARGO_BIN_EXE_requimd"), &exe).unwrap();
+    let project = dir.join("project");
+    fs::create_dir_all(&project).unwrap();
+    let run = |args: &[&str]| {
+        Command::new(&exe)
+            .args(args)
+            .current_dir(&project)
+            .output()
+            .unwrap()
+    };
+    assert!(run(&["init"]).status.success());
+    write(&project, "a.md", "## FR-001 A\n\nThe system shall work.\n");
+    assert_eq!(run(&["check"]).status.code(), Some(0));
+    assert!(run(&["export", "site", "site"]).status.success());
+    assert!(project.join("site/index.html").is_file());
+}
+
 #[test]
 fn fr_306_coverage_per_use_case() {
     let out = stdout(&requimd(&examples("broken"), &["coverage"]));
@@ -504,8 +680,8 @@ fn nfr_007_neovim_builtin_client_without_plugins() {
 }
 
 #[test]
-fn nfr_010_every_must_requirement_of_m1_and_m2_has_a_test() {
-    // `must` items of M1 and M2 in docs/roadmap.md.
+fn nfr_010_every_must_requirement_of_a_milestone_has_a_test() {
+    // `must` items of M1 to M5 in docs/roadmap.md; M3 and M4 have none.
     let mut ids: Vec<String> = Vec::new();
     ids.extend((1..=10).chain(12..=14).map(|n| format!("fr_{n:03}")));
     ids.extend((100..=109).chain([115, 117]).map(|n| format!("fr_{n:03}")));
@@ -520,6 +696,8 @@ fn nfr_010_every_must_requirement_of_m1_and_m2_has_a_test() {
             .map(|n| format!("fr_{n:03}")),
     );
     ids.extend(["nfr_001", "nfr_003", "nfr_007", "nfr_009"].map(String::from));
+    // M5
+    ids.push("nfr_005".into());
     let names = test_names();
     let missing: Vec<&String> = ids
         .iter()

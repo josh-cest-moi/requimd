@@ -25,13 +25,20 @@ When the cart is opened, the system shall calculate VAT per line item
 based on the delivery country (see BR-003).
 ```
 
-## Usage
+## Installation
+
+Download the archive for your system from the
+[releases](https://github.com/josh-cest-moi/requimd/releases), unpack it and
+put the single file `requimd` (`requimd.exe` on Windows) on your `PATH`.
+Nothing else is needed. Or build from source:
 
 ```bash
 cargo build --release
 ```
 
-The binary `target/release/requimd` provides:
+## Usage
+
+The binary `requimd` provides:
 
 | Command | Purpose |
 |---------|---------|
@@ -41,6 +48,9 @@ The binary `target/release/requimd` provides:
 | `requimd show <ID>` | Show an item or step with its references |
 | `requimd coverage` | Coverage of use case steps |
 | `requimd review <ID> \| --all` | Mark suspect links as reviewed |
+| `requimd export site <dir> [--status …]` | Static website without JavaScript, readable from the file system |
+| `requimd export matrix [-o file]` | Traceability matrix as CSV |
+| `requimd export json [-o file]` | The item graph as JSON |
 | `requimd lsp` | Language server on stdio |
 
 Editor setup: `docs/neovim.md`.
@@ -65,3 +75,8 @@ Editor setup: `docs/neovim.md`.
 
 Read `docs/status.md`, then `requirements/README.md` and
 `requirements/vision.md`.
+
+## License
+
+Licensed under either of [MIT](LICENSE-MIT) or [Apache-2.0](LICENSE-APACHE),
+at your option.

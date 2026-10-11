@@ -43,12 +43,26 @@ As of 2026-10-12. Update this file at the end of every working session.
   "Mark as reviewed" (FR-218), rename rewrites lock entries (FR-214).
   `requimd.lock` is committed for this repository and both examples. All
   M4 features pass in Neovim 0.12.6.
-- **M5 Publishing: next.**
+- **M5 Publishing: implemented.** `requimd export site | matrix | json`
+  (FR-400 to FR-402, CLI module `export/`): one self-contained HTML page per
+  source file (CSS embedded, no JavaScript), index, traceability matrix as
+  page and CSV, JSON with format version. FR-405 deprecated. License MIT OR
+  Apache-2.0. `.github/workflows/release.yml` builds static binaries for
+  Linux (musl), macOS (arm64, x86_64) and Windows (static CRT) on a version
+  tag and attaches them to a GitHub release (NFR-005). CI uploads this
+  repository's site as artifact `requimd-site`. Open: `LICENSE-APACHE`
+  (official text still to be added), first release tag.
 
 ## Decision log
 
 | Date | Decision | Where recorded |
 |------|----------|----------------|
+| 2026-10-12 | No Confluence: FR-405 deprecated; stakeholders get PDFs from an external Markdown-to-PDF converter | FR-405 |
+| 2026-10-12 | Site shows all items with status badge, `--status` filters; no JavaScript | FR-400 |
+| 2026-10-12 | Traceability matrix: one row per step with implementing and verifying items | FR-401 |
+| 2026-10-12 | License MIT OR Apache-2.0; releases as binaries on GitHub Releases | `docs/roadmap.md` |
+| 2026-10-12 | CI builds the site as artifact; GitHub Pages later | `docs/roadmap.md` |
+| 2026-10-12 | FR-403 and FR-404 after M5 | `docs/roadmap.md` |
 | 2026-10-12 | The language server rewrites lock entries of a rename only once the documents show it, so a cancelled rename changes nothing | FR-214, `crates/requimd-lsp/src/server.rs` |
 | 2026-10-12 | Lock file `requimd.lock` in TOML, sorted, one line per link, plus `[ids]` | ADR-0007 |
 | 2026-10-12 | `check` adds and removes lock entries but never changes a hash; `--locked` for CI; the language server records on save | ADR-0007, FR-116, FR-300, FR-218 |
@@ -98,8 +112,9 @@ As of 2026-10-12. Update this file at the end of every working session.
 2. **Default weak-word list:** draft accepted on 2026-10-12 (see decision
    log). Refine the reasons in `crates/requimd-core/src/config.rs`
    (`WEAK_WORDS`) whenever the wording should change.
-3. **Publishing audience:** who reads the requirements besides analysts and
-   developers? Decides whether FR-405 (Confluence) moves up.
+3. **Publishing audience:** decided on 2026-10-12: the static site, and PDFs
+   from an external Markdown-to-PDF converter; no Confluence (FR-405
+   deprecated).
 4. **Name:** decided on 2026-10-12: requimd, spoken "requi-m-d"
    (ADR-0006).
 5. **Interpretations in M1 to confirm** (implemented, not yet in the spec):
@@ -148,9 +163,12 @@ As of 2026-10-12. Update this file at the end of every working session.
 
 1. Owner: try M3 and M4 in Neovim (`docs/neovim.md`) and review the open
    interpretations above (business questions 5 to 7).
-2. M5 Publishing: FR-400 to FR-402, then FR-403 to FR-405; NFR-005 and
-   release packaging. Business question 3 (publishing audience) decides
-   whether FR-405 (Confluence) moves up.
+2. Add `LICENSE-APACHE` with the official Apache-2.0 text; the release
+   workflow packages it.
+3. First release: push tag `v0.1.0` (matches `Cargo.toml`); check the
+   release job and the four archives.
+4. After M5: FR-403 (`requimd diff`) and FR-404 (Mermaid export), in
+   separate commits. Later: publish the site on GitHub Pages.
 
 ## Related documents outside the repo
 
