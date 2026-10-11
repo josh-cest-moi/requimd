@@ -18,6 +18,56 @@ pub const STEP: &str = "step";
 pub const REF: &str = "ref";
 /// Link key that covers use case steps (FR-106).
 pub const IMPL: &str = "impl";
+/// Item types checked for weak words (FR-110).
+pub const FUNCTIONAL: &str = "functional";
+pub const QUALITY: &str = "quality";
+/// Item type checked for the user story pattern (FR-113).
+pub const STORY: &str = "story";
+
+/// Built-in weak words with reasons (FR-110). Configured words extend them.
+pub const WEAK_WORDS: &[(&str, &str)] = &[
+    ("fast", "not measurable; state a time limit"),
+    ("quick", "not measurable; state a time limit"),
+    ("quickly", "not measurable; state a time limit"),
+    (
+        "easy",
+        "not testable; state who does what in how many steps",
+    ),
+    (
+        "user-friendly",
+        "not testable; name the usability criterion",
+    ),
+    ("intuitive", "not testable; name the usability criterion"),
+    (
+        "flexible",
+        "vague; name the variations that must be supported",
+    ),
+    ("robust", "vague; name the faults that must be tolerated"),
+    ("appropriate", "vague; state the criterion"),
+    ("adequate", "vague; state the criterion"),
+    ("several", "vague quantity; state the number"),
+    ("etc.", "incomplete list; name all items"),
+    (
+        "and/or",
+        "ambiguous; write \"and\", \"or\" or \"one or both of\"",
+    ),
+    ("as needed", "unclear trigger; state the condition"),
+    (
+        "if possible",
+        "optional in disguise; decide if it is required",
+    ),
+    ("simple", "not testable; state the criterion"),
+    ("efficient", "not measurable; state the resource limit"),
+    ("sufficient", "vague; state the amount"),
+    ("normally", "unclear; state the condition or the exception"),
+    ("usually", "unclear; state the condition or the exception"),
+];
+
+/// Built-in modal verbs other than "shall" (FR-118).
+pub const MODAL_VERBS: &[&str] = &["should", "may", "can", "could", "might", "will"];
+
+/// Checks that honour `allow` lists and inline markers (FR-119).
+pub const ALLOW_CHECKS: &[&str] = &["weak-word", "modal-verb", "glossary-alias"];
 
 /// Check IDs that may be configured (FR-117), including those of later
 /// milestones, so a configuration stays valid while checks are added.
@@ -112,9 +162,19 @@ status = "draft"
 # Severity by check id: "error", "warning", "info" or "off", e.g.
 # uncovered-step = "info"
 
+# Language checks: `words` extend the built-in lists, `allow` switches
+# words or phrases off (FR-110, FR-118, FR-119). Example:
+# [checks.weak-word]
+# words = [{ w = "seamless", why = "marketing word; describe the behaviour" }]
+# allow = ["Fast Track"]
+
 [lsp]
 # Characters of item text shown on hover (FR-205).
 hover-length = 500
+# Characters of the target title shown after links (FR-209).
+hint-length = 40
+# File for stubs created by code actions (FR-213); default: current file.
+# stub-file = "inbox.md"
 "#;
 
 /// An item type, e.g. `functional` with prefix `FR`.
@@ -141,8 +201,17 @@ pub struct LinkType {
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct CheckConfig {
     pub level: Option<Level>,
-    /// Check-specific options such as `words` (FR-110).
-    pub options: toml::Table,
+    /// Additional words of a language check (FR-110, FR-118).
+    pub words: Vec<WordEntry>,
+    /// Allowed words or phrases (FR-119).
+    pub allow: Vec<String>,
+}
+
+/// A word or phrase of a language check with its reason (FR-110).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct WordEntry {
+    pub word: String,
+    pub why: String,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -159,6 +228,10 @@ pub struct Config {
     pub checks: BTreeMap<String, CheckConfig>,
     /// Characters of item text shown on hover (FR-205).
     pub hover_length: usize,
+    /// Characters of an inlay hint (FR-209).
+    pub hint_length: usize,
+    /// File for new stubs, relative to the root (FR-213).
+    pub stub_file: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -248,6 +321,41 @@ impl Config {
     pub fn check_level(&self, id: &str) -> Option<Level> {
         self.checks.get(id).and_then(|c| c.level)
     }
+
+    /// Built-in plus configured weak words (FR-110).
+    pub fn weak_words(&self) -> Vec<WordEntry> {
+        let mut words: Vec<WordEntry> = WEAK_WORDS
+            .iter()
+            .map(|(w, why)| WordEntry {
+                word: w.to_string(),
+                why: why.to_string(),
+            })
+            .collect();
+        words.extend(
+            self.checks
+                .get("weak-word")
+                .into_iter()
+                .flat_map(|c| c.words.clone()),
+        );
+        words
+    }
+
+    /// Built-in plus configured modal verbs (FR-118).
+    pub fn modal_verbs(&self) -> Vec<String> {
+        let mut words: Vec<String> = MODAL_VERBS.iter().map(|w| w.to_string()).collect();
+        words.extend(
+            self.checks
+                .get("modal-verb")
+                .into_iter()
+                .flat_map(|c| c.words.iter().map(|w| w.word.clone())),
+        );
+        words
+    }
+
+    /// Project-wide allow list of a check (FR-119).
+    pub fn allow(&self, check: &str) -> &[String] {
+        self.checks.get(check).map_or(&[], |c| c.allow.as_slice())
+    }
 }
 
 fn parse_raw(text: &str, path: Option<&Path>) -> Result<Raw, ConfigError> {
@@ -284,6 +392,8 @@ struct Raw {
 #[serde(deny_unknown_fields, rename_all = "kebab-case")]
 struct RawLsp {
     hover_length: Option<usize>,
+    hint_length: Option<usize>,
+    stub_file: Option<String>,
 }
 
 #[derive(Debug, Default, Deserialize)]
@@ -341,6 +451,12 @@ impl Raw {
         }
         if over.lsp.hover_length.is_some() {
             self.lsp.hover_length = over.lsp.hover_length;
+        }
+        if over.lsp.hint_length.is_some() {
+            self.lsp.hint_length = over.lsp.hint_length;
+        }
+        if over.lsp.stub_file.is_some() {
+            self.lsp.stub_file = over.lsp.stub_file;
         }
         self.types.extend(over.types);
         self.links.extend(over.links);
@@ -452,14 +568,43 @@ impl Raw {
                         Some(v) => Some(parse_level(&v)?),
                         None => None,
                     };
-                    CheckConfig { level, options }
+                    let language = ALLOW_CHECKS.contains(&id.as_str());
+                    let words = match options.remove("words") {
+                        Some(v) if language && id != "glossary-alias" => {
+                            parse_words(&v).map_err(|m| err(format!("[checks.{id}] words: {m}")))?
+                        }
+                        Some(_) => {
+                            return Err(err(format!("[checks.{id}] has no option \"words\"")));
+                        }
+                        None => Vec::new(),
+                    };
+                    let allow = match options.remove("allow") {
+                        Some(v) if language => parse_strings(&v).ok_or_else(|| {
+                            err(format!("[checks.{id}] allow must be a list of strings"))
+                        })?,
+                        Some(_) => {
+                            return Err(err(format!("[checks.{id}] has no option \"allow\"")));
+                        }
+                        None => Vec::new(),
+                    };
+                    if let Some(key) = options.keys().next() {
+                        return Err(err(format!("[checks.{id}] has no option \"{key}\"")));
+                    }
+                    CheckConfig {
+                        level,
+                        words,
+                        allow,
+                    }
                 }
                 v => CheckConfig {
                     level: Some(parse_level(&v)?),
-                    options: toml::Table::new(),
+                    ..CheckConfig::default()
                 },
             };
             checks.insert(id, check);
+        }
+        if self.lsp.hint_length == Some(0) || self.lsp.hover_length == Some(0) {
+            return Err(err("[lsp] lengths must be at least 1".into()));
         }
 
         Ok(Config {
@@ -473,8 +618,51 @@ impl Raw {
             defaults: self.defaults,
             checks,
             hover_length: self.lsp.hover_length.unwrap_or(500),
+            hint_length: self.lsp.hint_length.unwrap_or(40),
+            stub_file: self.lsp.stub_file,
         })
     }
+}
+
+fn parse_strings(v: &toml::Value) -> Option<Vec<String>> {
+    v.as_array()?
+        .iter()
+        .map(|s| s.as_str().map(str::to_string))
+        .collect()
+}
+
+/// `words` entries: `"word"` or `{ w = "word", why = "reason" }`.
+fn parse_words(v: &toml::Value) -> Result<Vec<WordEntry>, String> {
+    let Some(list) = v.as_array() else {
+        return Err("must be a list".into());
+    };
+    list.iter()
+        .map(|e| match e {
+            toml::Value::String(w) => Ok(WordEntry {
+                word: w.clone(),
+                why: String::new(),
+            }),
+            toml::Value::Table(t) => {
+                if let Some(k) = t.keys().find(|k| *k != "w" && *k != "why") {
+                    return Err(format!("unknown key \"{k}\""));
+                }
+                let word = t
+                    .get("w")
+                    .and_then(toml::Value::as_str)
+                    .ok_or("each entry needs a string \"w\"")?;
+                let why = match t.get("why") {
+                    None => "",
+                    Some(w) => w.as_str().ok_or("\"why\" must be a string")?,
+                };
+                Ok(WordEntry {
+                    word: word.to_string(),
+                    why: why.to_string(),
+                })
+            }
+            _ => Err("entries must be strings or { w, why } tables".into()),
+        })
+        .filter(|r| r.as_ref().map_or(true, |w| !w.word.trim().is_empty()))
+        .collect()
 }
 
 #[cfg(test)]
@@ -577,8 +765,76 @@ allow = ["Fast Track"]
             Some(Level::On(Severity::Info))
         );
         assert_eq!(c.check_level("weak-word"), Some(Level::Off));
-        assert!(c.checks["weak-word"].options.contains_key("allow"));
+        assert_eq!(c.allow("weak-word"), ["Fast Track"]);
         assert_eq!(c.hover_length, 500);
+        assert_eq!(c.hint_length, 40);
+        assert_eq!(c.stub_file, None);
+    }
+
+    #[test]
+    fn fr_110_configured_words_extend_built_in_list() {
+        let c = Config::from_toml(
+            "[checks.weak-word]\nwords = [{ w = \"seamless\", why = \"marketing\" }, \"nice\"]\n\
+             [checks.modal-verb]\nwords = [\"must\"]\n",
+            None,
+        )
+        .unwrap();
+        let words = c.weak_words();
+        assert!(words.iter().any(|w| w.word == "fast" && !w.why.is_empty()));
+        assert!(
+            words
+                .iter()
+                .any(|w| w.word == "seamless" && w.why == "marketing")
+        );
+        assert!(words.iter().any(|w| w.word == "nice" && w.why.is_empty()));
+        for required in [
+            "fast",
+            "quick",
+            "quickly",
+            "easy",
+            "user-friendly",
+            "intuitive",
+            "flexible",
+            "robust",
+            "appropriate",
+            "adequate",
+            "several",
+            "etc.",
+            "and/or",
+            "as needed",
+            "if possible",
+        ] {
+            assert!(words.iter().any(|w| w.word == required), "{required}");
+        }
+        assert!(WEAK_WORDS.iter().all(|(_, why)| !why.is_empty()));
+        assert_eq!(
+            c.modal_verbs(),
+            ["should", "may", "can", "could", "might", "will", "must"]
+        );
+    }
+
+    #[test]
+    fn fr_119_invalid_language_options_are_config_errors() {
+        for bad in [
+            "[checks.weak-word]\nwords = \"fast\"\n",
+            "[checks.weak-word]\nwords = [{ why = \"x\" }]\n",
+            "[checks.weak-word]\nwords = [{ w = \"x\", reason = \"y\" }]\n",
+            "[checks.weak-word]\nallow = [1]\n",
+            "[checks.weak-word]\ncolour = 1\n",
+            "[checks.glossary-alias]\nwords = [\"x\"]\n",
+            "[checks.placeholder]\nallow = [\"x\"]\n",
+            "[lsp]\nhint-length = 0\n",
+        ] {
+            assert!(Config::from_toml(bad, None).is_err(), "{bad}");
+        }
+    }
+
+    #[test]
+    fn fr_213_stub_file_and_fr_209_hint_length() {
+        let c =
+            Config::from_toml("[lsp]\nstub-file = \"inbox.md\"\nhint-length = 20\n", None).unwrap();
+        assert_eq!(c.stub_file.as_deref(), Some("inbox.md"));
+        assert_eq!(c.hint_length, 20);
     }
 
     #[test]

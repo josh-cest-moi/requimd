@@ -6,6 +6,8 @@
 use std::collections::{HashMap, HashSet};
 use std::ops::Range;
 
+mod language;
+
 use reqmd_core::config::{IMPL, REF, STEP, USECASE};
 use reqmd_core::{Diagnostic, FileId, Item, Level, Project, Reference, Resolution, Severity};
 
@@ -23,6 +25,7 @@ pub fn check(project: &Project) -> Vec<Diagnostic> {
     ref_cycle(&mut out);
     status_link(&mut out);
     placeholder(&mut out);
+    language::run(&mut out);
     let mut diags = out.diags;
     diags.sort_by(|a, b| {
         (a.file, a.span.start, a.check, &a.message).cmp(&(
@@ -35,14 +38,14 @@ pub fn check(project: &Project) -> Vec<Diagnostic> {
     diags
 }
 
-struct Out<'a> {
-    project: &'a Project,
+pub(crate) struct Out<'a> {
+    pub(crate) project: &'a Project,
     diags: Vec<Diagnostic>,
 }
 
 impl Out<'_> {
     /// FR-117: applies the configured severity or drops the diagnostic.
-    fn push(
+    pub(crate) fn push(
         &mut self,
         check: &'static str,
         default: Severity,

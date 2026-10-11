@@ -43,7 +43,7 @@ fn fr_300_text_output_and_exit_code_1_on_errors() {
     assert_eq!(o.status.code(), Some(1));
     let out = stdout(&o);
     let lines: Vec<&str> = out.lines().collect();
-    assert_eq!(lines.len(), 13, "{out}");
+    assert_eq!(lines.len(), 22, "{out}");
     assert!(
         lines.contains(&"broken.md:11:32: warning: unknown key \"colour\" for functional items; allowed: status, prio, impl, ref, ver [unknown-key]"),
         "{out}"
@@ -100,7 +100,9 @@ fn fr_300_paths_filter_output_but_whole_project_is_loaded() {
     assert_eq!(o.status.code(), Some(0));
     assert_eq!(stdout(&o), "");
     let o = reqmd(&dir, &["check", "b.md"]);
-    assert!(stdout(&o).starts_with("b.md:4:1: warning: placeholder"));
+    let out = stdout(&o);
+    assert!(out.contains("b.md:4:1: warning: placeholder"), "{out}");
+    assert!(out.lines().all(|l| l.starts_with("b.md:")), "{out}");
     // Paths from different projects are a usage error.
     let other = examples("shop");
     let o = reqmd(&dir, &["check", "a.md", other.to_str().unwrap()]);
@@ -119,7 +121,7 @@ fn fr_301_json_output() {
     assert_eq!(o.status.code(), Some(1));
     let v: serde_json::Value = serde_json::from_str(&stdout(&o)).unwrap();
     let arr = v.as_array().unwrap();
-    assert_eq!(arr.len(), 13);
+    assert_eq!(arr.len(), 22);
     let d = &arr[0];
     for key in [
         "file",
@@ -225,6 +227,80 @@ fn test_names() -> Vec<String> {
         }
     }
     names
+}
+
+#[test]
+fn fr_304_fmt_assigns_ids_and_normalises_metadata() {
+    let dir = temp_dir("fmt");
+    write(&dir, "reqmd.toml", "");
+    let text = "## FR-001 A\nprio:   must\tstatus: draft\n\n## FR-? B\n";
+    write(&dir, "a.md", text);
+    let o = reqmd(&dir, &["fmt", "--check"]);
+    assert_eq!(o.status.code(), Some(1));
+    assert_eq!(stdout(&o), "would format a.md\n");
+    assert_eq!(fs::read_to_string(dir.join("a.md")).unwrap(), text);
+
+    let o = reqmd(&dir, &["fmt"]);
+    assert_eq!(o.status.code(), Some(0));
+    assert_eq!(
+        fs::read_to_string(dir.join("a.md")).unwrap(),
+        "## FR-001 A\nprio: must  status: draft\n\n## FR-002 B\n"
+    );
+    assert_eq!(reqmd(&dir, &["fmt", "--check"]).status.code(), Some(0));
+}
+
+#[test]
+fn fr_305_show_item_and_step_with_references() {
+    let o = reqmd(&examples("shop"), &["show", "FR-104"]);
+    assert_eq!(o.status.code(), Some(0));
+    let out = stdout(&o);
+    assert!(out.starts_with("FR-104 VAT per line item\n"), "{out}");
+    assert!(
+        out.contains("impl     UC-012.s2    System shows the total incl. VAT."),
+        "{out}"
+    );
+    assert!(
+        out.contains("ver      TC-220       VAT for delivery to Austria  (tests.md:3)"),
+        "{out}"
+    );
+
+    let out = stdout(&reqmd(&examples("shop"), &["show", "UC-012.s2"]));
+    assert!(
+        out.contains("FR-104") && out.contains("FR-105") && out.contains("NFR-007"),
+        "{out}"
+    );
+    assert!(!out.contains("FR-101"), "{out}");
+
+    assert_eq!(
+        reqmd(&examples("shop"), &["show", "FR-999"]).status.code(),
+        Some(1)
+    );
+    assert_eq!(
+        reqmd(&examples("shop"), &["show", "nonsense"])
+            .status
+            .code(),
+        Some(2)
+    );
+    assert_eq!(
+        reqmd(&examples("broken"), &["show", "FR-001"])
+            .status
+            .code(),
+        Some(1)
+    );
+}
+
+#[test]
+fn fr_306_coverage_per_use_case() {
+    let out = stdout(&reqmd(&examples("broken"), &["coverage"]));
+    assert_eq!(
+        out,
+        "UC-001 Checkout: 3 steps, 1 covered\n  uncovered: s2, s2\ntotal: 3 steps, 1 covered (33 %)\n"
+    );
+    let out = stdout(&reqmd(&examples("shop"), &["coverage"]));
+    assert!(
+        out.ends_with("total: 4 steps, 4 covered (100 %)\n"),
+        "{out}"
+    );
 }
 
 /// One JSON-RPC message with its header.

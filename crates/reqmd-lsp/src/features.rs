@@ -6,12 +6,14 @@ use std::collections::HashMap;
 use std::ops::Range;
 
 use lsp_types::{
-    CodeAction, CodeActionKind, CodeActionOrCommand, CompletionItem, CompletionItemKind,
-    CompletionList, CompletionTextEdit, DocumentSymbol, Hover, HoverContents, Location,
-    MarkupContent, MarkupKind, OneOf, SymbolKind, TextEdit, Uri, WorkspaceEdit, WorkspaceSymbol,
+    CodeAction, CodeActionKind, CodeActionOrCommand, CodeLens, Command, CompletionItem,
+    CompletionItemKind, CompletionList, CompletionTextEdit, DocumentSymbol, Hover, HoverContents,
+    InlayHint, InlayHintLabel, Location, MarkupContent, MarkupKind, OneOf, SymbolKind, TextEdit,
+    Uri, WorkspaceEdit, WorkspaceSymbol,
 };
 use reqmd_core::config::{IMPL, STEP, USECASE};
-use reqmd_core::parse::{code_ranges, key_colon};
+use reqmd_core::parse::{code_ranges, key_colon, parse_target};
+use reqmd_core::words::find_phrase;
 use reqmd_core::{FileId, Item, Project, Reference, Resolution, Target};
 
 use crate::convert::{Encoding, LineIndex, path_to_uri};
@@ -122,10 +124,54 @@ fn step_text<'a>(p: &'a Project, item: &Item, s: usize) -> &'a str {
         .unwrap_or_default()
 }
 
+/// FR-205 for glossary terms and aliases in text.
+fn glossary_hover(ctx: &Ctx, file: FileId, off: usize) -> Option<Hover> {
+    let p = ctx.project;
+    let text = ctx.text(file);
+    let line_start = text.get(..off)?.rfind('\n').map_or(0, |i| i + 1);
+    let line_end = text.get(off..)?.find('\n').map_or(text.len(), |i| off + i);
+    let gtext = p
+        .glossary_file
+        .and_then(|g| p.files.get(g))
+        .map_or("", |f| f.text.as_str());
+    for term in &p.glossary {
+        for phrase in std::iter::once(&term.name).chain(&term.aliases) {
+            let Some(span) = find_phrase(text, line_start..line_end, phrase)
+                .into_iter()
+                .find(|r| r.start <= off && off <= r.end)
+            else {
+                continue;
+            };
+            let mut value = format!("**{}**", term.name);
+            if phrase != &term.name {
+                value.push_str(&format!(" (\"{phrase}\" is an alias)"));
+            }
+            if !term.aliases.is_empty() {
+                value.push_str(&format!("\n\nalias: {}", term.aliases.join(", ")));
+            }
+            let def = gtext.get(term.definition.clone()).unwrap_or_default();
+            if !def.is_empty() {
+                value.push_str("\n\n---\n\n");
+                value.push_str(&truncate(def, p.config.hover_length));
+            }
+            return Some(Hover {
+                contents: HoverContents::Markup(MarkupContent {
+                    kind: MarkupKind::Markdown,
+                    value,
+                }),
+                range: Some(ctx.index(file)?.range(&span)),
+            });
+        }
+    }
+    None
+}
+
 /// FR-205
 pub fn hover(ctx: &Ctx, file: FileId, off: usize) -> Option<Hover> {
     let p = ctx.project;
-    let r = reference_at(p, file, off)?;
+    let Some(r) = reference_at(p, file, off) else {
+        return glossary_hover(ctx, file, off);
+    };
     let target = r.target.as_ref()?;
     let value = match p.resolve(target) {
         Resolution::Item(i) => {
@@ -381,6 +427,174 @@ pub fn code_actions(ctx: &Ctx, file: FileId, range: Range<usize>) -> Vec<CodeAct
             })
         })
         .collect()
+}
+
+/// FR-209: the target's title or step text after each link in `range`.
+pub fn inlay_hints(ctx: &Ctx, file: FileId, range: Range<usize>) -> Vec<InlayHint> {
+    let p = ctx.project;
+    let Some(index) = ctx.index(file) else {
+        return Vec::new();
+    };
+    let mut out = Vec::new();
+    for item in p.items.iter().filter(|it| it.file == file) {
+        for link in &item.links {
+            let r = &link.reference;
+            if r.span.end < range.start || range.end < r.span.start {
+                continue;
+            }
+            let Some(sym) = r.target.as_ref().and_then(|t| resolve(p, t)) else {
+                continue;
+            };
+            let label = match sym {
+                Sym::Item(i) => p.items.get(i).map(|t| t.title.clone()).unwrap_or_default(),
+                Sym::Step(i, s) => p
+                    .items
+                    .get(i)
+                    .map(|t| step_text(p, t, s).to_string())
+                    .unwrap_or_default(),
+            };
+            let label = short(&label, p.config.hint_length);
+            if label.is_empty() {
+                continue;
+            }
+            out.push(InlayHint {
+                position: index.position(r.span.end),
+                label: InlayHintLabel::String(label),
+                kind: None,
+                text_edits: None,
+                tooltip: None,
+                padding_left: Some(true),
+                padding_right: None,
+                data: None,
+            });
+        }
+    }
+    out
+}
+
+/// Command run by a step's code lens; its argument is the list of
+/// locations of the implementing items (FR-215).
+pub const IMPLEMENTATIONS_COMMAND: &str = "reqmd.implementations";
+
+/// FR-215: number and IDs of the implementing items on each step.
+pub fn code_lenses(ctx: &Ctx, file: FileId) -> Vec<CodeLens> {
+    let p = ctx.project;
+    let Some(index) = ctx.index(file) else {
+        return Vec::new();
+    };
+    let mut out = Vec::new();
+    for (i, uc) in p.items.iter().enumerate() {
+        if uc.file != file || uc.kind != USECASE {
+            continue;
+        }
+        for (s, step) in uc.steps.iter().enumerate() {
+            let implementers: Vec<&Item> = p
+                .items
+                .iter()
+                .filter(|it| {
+                    it.links
+                        .iter()
+                        .any(|l| l.key == IMPL && refers_to(p, &l.reference, Sym::Step(i, s)))
+                })
+                .collect();
+            let ids: Vec<String> = implementers.iter().map(|it| it.display_id()).collect();
+            let title = match ids.len() {
+                0 => "no implementation".to_string(),
+                n => format!("{n} impl: {}", ids.join(", ")),
+            };
+            let locations: Vec<Location> = implementers
+                .iter()
+                .filter_map(|it| ctx.location(it.file, &it.id_span))
+                .collect();
+            out.push(CodeLens {
+                range: index.range(&step.label_span),
+                command: Some(Command {
+                    title,
+                    command: IMPLEMENTATIONS_COMMAND.into(),
+                    arguments: serde_json::to_value(locations).ok().map(|v| vec![v]),
+                }),
+                data: None,
+            });
+        }
+    }
+    out
+}
+
+/// The ID under the cursor that a rename would change, and its span here.
+fn rename_target(p: &Project, file: FileId, off: usize) -> Option<(String, Range<usize>)> {
+    if let Some(r) = reference_at(p, file, off) {
+        let id = r.target.as_ref()?.id.clone();
+        let span = r.span.start..r.span.start + id.len();
+        return Some((id, span));
+    }
+    let item = p.items.get(item_at(p, file, off)?)?;
+    if off < item.id_span.start || item.id_span.end < off {
+        return None;
+    }
+    Some((item.id.clone()?, item.id_span.clone()))
+}
+
+/// FR-214: range and text of the ID a rename would change.
+pub fn prepare_rename(ctx: &Ctx, file: FileId, off: usize) -> Option<(lsp_types::Range, String)> {
+    let (id, span) = rename_target(ctx.project, file, off)?;
+    Some((ctx.index(file)?.range(&span), id))
+}
+
+/// FR-214: renames an item ID in its declaration and all references.
+#[allow(clippy::mutable_key_type)] // lsp-types keys edits by Uri.
+pub fn rename(ctx: &Ctx, file: FileId, off: usize, new_id: &str) -> Result<WorkspaceEdit, String> {
+    let p = ctx.project;
+    let (old, _) = rename_target(p, file, off).ok_or("no item ID at the cursor")?;
+    let decl = match p.declarations(&old) {
+        [] => return Err(format!("{old} does not exist")),
+        [d] => *d,
+        _ => return Err(format!("{old} is declared more than once")),
+    };
+    let new_id = new_id.trim();
+    let valid = parse_target(&p.config, new_id).is_some_and(|t| t.step.is_none());
+    if !valid {
+        return Err(format!("\"{new_id}\" is not a valid item ID"));
+    }
+    let prefix = |id: &str| id.rsplit_once('-').map(|(p, _)| p.to_string());
+    if prefix(new_id) != prefix(&old) {
+        return Err(format!(
+            "{new_id} has a different prefix than {old}; a rename keeps the item type"
+        ));
+    }
+    if new_id == old {
+        return Err("the new ID is the old ID".into());
+    }
+    if !p.declarations(new_id).is_empty() {
+        return Err(format!("{new_id} already exists"));
+    }
+    let mut changes: HashMap<Uri, Vec<TextEdit>> = HashMap::new();
+    let mut edit = |file: FileId, span: Range<usize>| {
+        if let (Some(uri), Some(index)) = (ctx.uri(file), ctx.index(file)) {
+            changes.entry(uri).or_default().push(TextEdit {
+                range: index.range(&span),
+                new_text: new_id.to_string(),
+            });
+        }
+    };
+    if let Some(item) = p.items.get(decl) {
+        edit(item.file, item.id_span.clone());
+    }
+    for item in &p.items {
+        for r in item
+            .links
+            .iter()
+            .map(|l| &l.reference)
+            .chain(&item.mentions)
+        {
+            if r.target.as_ref().is_some_and(|t| t.id == old) {
+                edit(item.file, r.span.start..r.span.start + old.len());
+            }
+        }
+    }
+    Ok(WorkspaceEdit {
+        changes: Some(changes),
+        ..WorkspaceEdit::default()
+    })
 }
 
 /// Characters that make up a reference or a word of a title.
@@ -920,6 +1134,142 @@ mod tests {
         assert_eq!(names("fr-104"), ["FR-104 VAT per line item"]);
         assert_eq!(names("order"), ["UC-012 Place order"]);
         assert_eq!(names("").len(), 4);
+    }
+
+    #[test]
+    fn fr_209_inlay_hints_after_links() {
+        let mut p = project(&[]);
+        p.config.hint_length = 12;
+        let uris = HashMap::new();
+        let c = ctx(&p, &uris);
+        let f = file(&p, "fr.md");
+        let hints = inlay_hints(&c, f, 0..p.files[f].text.len());
+        assert_eq!(hints.len(), 1);
+        let InlayHintLabel::String(label) = &hints[0].label else {
+            panic!()
+        };
+        assert_eq!(label, "System shows…");
+        assert_eq!(hints[0].position, lsp_types::Position::new(1, 15));
+        // Outside the range: none.
+        assert!(inlay_hints(&c, f, 0..5).is_empty());
+    }
+
+    #[test]
+    fn fr_215_code_lens_per_step() {
+        let p = project(&[("more.md", "## FR-300 Y\nimpl: UC-012.s2\n")]);
+        let uris = HashMap::new();
+        let c = ctx(&p, &uris);
+        let lenses = code_lenses(&c, file(&p, "uc.md"));
+        let titles: Vec<&str> = lenses
+            .iter()
+            .map(|l| l.command.as_ref().unwrap().title.as_str())
+            .collect();
+        assert_eq!(titles, ["no implementation", "2 impl: FR-104, FR-300"]);
+        let cmd = lenses[1].command.as_ref().unwrap();
+        assert_eq!(cmd.command, IMPLEMENTATIONS_COMMAND);
+        let locs: Vec<Location> =
+            serde_json::from_value(cmd.arguments.as_ref().unwrap()[0].clone()).unwrap();
+        assert_eq!(locs.len(), 2);
+    }
+
+    #[test]
+    #[allow(clippy::mutable_key_type)]
+    fn fr_214_rename_updates_declaration_and_references() {
+        let p = project(&[]);
+        let uris = HashMap::new();
+        let c = ctx(&p, &uris);
+        let uc = file(&p, "uc.md");
+        let (range, id) = prepare_rename(&c, uc, 4).unwrap();
+        assert_eq!(id, "UC-012");
+        assert_eq!(range.start, lsp_types::Position::new(0, 3));
+        let edit = rename(&c, uc, 4, "UC-013").unwrap();
+        let changes = edit.changes.unwrap();
+        let count: usize = changes.values().map(Vec::len).sum();
+        // Declaration, the step link and the mention in fr.md.
+        assert_eq!(count, 3);
+        let fr_edits = changes
+            .iter()
+            .find(|(u, _)| u.as_str().ends_with("fr.md"))
+            .unwrap()
+            .1;
+        assert!(fr_edits.iter().all(|e| e.new_text == "UC-013"));
+        // The step link keeps its step: only the ID part is replaced.
+        assert!(
+            fr_edits
+                .iter()
+                .any(|e| e.range.start == lsp_types::Position::new(1, 6)
+                    && e.range.end == lsp_types::Position::new(1, 12))
+        );
+    }
+
+    #[test]
+    fn fr_214_rename_refuses_invalid_existing_or_other_prefix() {
+        let p = project(&[]);
+        let uris = HashMap::new();
+        let c = ctx(&p, &uris);
+        let fr = file(&p, "fr.md");
+        let off = 4;
+        assert!(
+            rename(&c, fr, off, "FR-12")
+                .unwrap_err()
+                .contains("not a valid")
+        );
+        assert!(
+            rename(&c, fr, off, "FR-104")
+                .unwrap_err()
+                .contains("old ID")
+        );
+        assert!(
+            rename(&c, fr, off, "NFR-104")
+                .unwrap_err()
+                .contains("prefix")
+        );
+        let p2 = project(&[("x.md", "## FR-105 Taken\n")]);
+        let c2 = ctx(&p2, &uris);
+        assert!(
+            rename(&c2, file(&p2, "fr.md"), off, "FR-105")
+                .unwrap_err()
+                .contains("exists")
+        );
+        // A placeholder has no ID to rename.
+        assert!(prepare_rename(&c, fr, at(&p, fr, "FR-?", 1)).is_none());
+    }
+
+    #[test]
+    fn fr_205_hover_on_glossary_term_and_alias() {
+        let files = [
+            ("a.md", "## TC-001 X\n\nPut it in the basket or the cart.\n"),
+            ("g.md", "## Cart\nalias: basket\n\nItems not yet ordered.\n"),
+        ];
+        let files = files
+            .iter()
+            .map(|(n, t)| {
+                SourceFile::new(std::env::temp_dir().join(n), n.to_string(), t.to_string())
+            })
+            .collect();
+        let config = Config::from_toml("[project]\nglossary = \"g.md\"\n", None).unwrap();
+        let p = Project::from_files(PathBuf::from("."), config, files);
+        let uris = HashMap::new();
+        let c = ctx(&p, &uris);
+        let h = hover(&c, 0, at(&p, 0, "basket", 2)).unwrap();
+        let HoverContents::Markup(m) = h.contents else {
+            panic!()
+        };
+        assert!(
+            m.value.starts_with("**Cart** (\"basket\" is an alias)"),
+            "{}",
+            m.value
+        );
+        assert!(m.value.contains("Items not yet ordered."));
+        let h = hover(&c, 0, at(&p, 0, "cart.", 1)).unwrap();
+        let HoverContents::Markup(m) = h.contents else {
+            panic!()
+        };
+        assert!(
+            m.value.starts_with("**Cart**\n\nalias: basket"),
+            "{}",
+            m.value
+        );
     }
 
     #[test]

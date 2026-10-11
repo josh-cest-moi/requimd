@@ -1,5 +1,7 @@
 //! The `reqmd` binary (FR-300 ff.).
 
+mod commands;
+
 use std::fs::OpenOptions;
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
@@ -32,6 +34,19 @@ enum Command {
     },
     /// Create reqmd.toml and an empty glossary in the current directory.
     Init,
+    /// Assign IDs to placeholders and normalise metadata separators.
+    Fmt {
+        /// Change nothing; exit with 1 if files would change.
+        #[arg(long)]
+        check: bool,
+    },
+    /// Print an item or step with its incoming and outgoing references.
+    Show {
+        /// Item ID or step reference, e.g. FR-104 or UC-012.s2.
+        id: String,
+    },
+    /// Print the coverage of use case steps by `impl` links.
+    Coverage,
     /// Start the language server on stdin and stdout.
     Lsp,
 }
@@ -56,6 +71,30 @@ fn main() -> ExitCode {
             strict,
         } => check(&paths, format, strict),
         Command::Init => init(),
+        // FR-304
+        Command::Fmt { check } => with_project(|p, cwd| match commands::fmt(p, check, cwd) {
+            Ok((out, changed)) => {
+                print!("{out}");
+                if check && changed { FOUND } else { OK }
+            }
+            Err(e) => fail(&e),
+        }),
+        // FR-305
+        Command::Show { id } => with_project(|p, cwd| match commands::show(p, &id, cwd) {
+            Ok(out) => {
+                print!("{out}");
+                OK
+            }
+            Err((code, msg)) => {
+                eprintln!("reqmd: {msg}");
+                code
+            }
+        }),
+        // FR-306
+        Command::Coverage => with_project(|p, _| {
+            print!("{}", commands::coverage(p));
+            OK
+        }),
         // FR-308
         Command::Lsp => match reqmd_lsp::run_stdio() {
             Ok(()) => OK,
@@ -63,6 +102,28 @@ fn main() -> ExitCode {
         },
     };
     ExitCode::from(code)
+}
+
+/// Loads the project around the working directory and runs `f` on it.
+fn with_project(f: impl FnOnce(&Project, &Path) -> u8) -> u8 {
+    let cwd = match std::env::current_dir() {
+        Ok(d) => d,
+        Err(e) => return fail(&format!("current directory: {e}")),
+    };
+    let Some(root) = find_root(&cwd) else {
+        return fail(&format!(
+            "no {CONFIG_FILE} found in {} or its parents; run `reqmd init`",
+            cwd.display()
+        ));
+    };
+    let project = match Config::load(&root)
+        .map_err(|e| e.to_string())
+        .and_then(|c| Project::load(&root, c).map_err(|e| e.to_string()))
+    {
+        Ok(p) => p,
+        Err(e) => return fail(&e),
+    };
+    f(&project, &cwd)
 }
 
 /// FR-300 to FR-302.

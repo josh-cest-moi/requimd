@@ -23,6 +23,7 @@ walkdir = "2.5.0"
 lsp-server = "0.10.0"
 lsp-types = "0.97.0"
 crossbeam-channel = "0.5.17"
+toml_edit = "0.25.17"
 
 # No unwrap/expect/panic outside tests: the parser must survive any input
 # (FR-012, NFR-009). Exceptions in tests are allowed via clippy.toml.

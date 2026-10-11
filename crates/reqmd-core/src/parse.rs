@@ -9,11 +9,24 @@ use std::ops::Range;
 use pulldown_cmark::{Event, HeadingLevel, Options, Parser, Tag, TagEnd};
 
 use crate::config::{Config, ItemType, USECASE};
-use crate::model::{BodyField, Item, Link, MetaPair, Reference, Step, Target};
+use crate::model::{BodyField, Item, Link, MetaPair, Reference, Step, Target, Term};
 use crate::source::FileId;
 
 /// Parses one file into its items.
 pub fn parse_file(config: &Config, file: FileId, text: &str) -> Vec<Item> {
+    parse(config, file, text).items
+}
+
+/// The result of parsing one file.
+#[derive(Debug, Clone, Default)]
+pub struct Parsed {
+    pub items: Vec<Item>,
+    /// Code blocks and inline code spans, in document order (FR-009).
+    pub code: Vec<Range<usize>>,
+}
+
+/// Parses one file into its items and code ranges.
+pub fn parse(config: &Config, file: FileId, text: &str) -> Parsed {
     let mut doc = scan(text);
     let mut heads: Vec<(usize, Head)> = Vec::new();
     for (i, h) in doc.headings.iter_mut().enumerate() {
@@ -52,7 +65,10 @@ pub fn parse_file(config: &Config, file: FileId, text: &str) -> Vec<Item> {
             body_start..end,
         ));
     }
-    items
+    Parsed {
+        items,
+        code: doc.code,
+    }
 }
 
 struct Heading {
@@ -480,6 +496,52 @@ fn scan_refs(
             i += 1;
         }
     }
+}
+
+/// FR-011: every heading of the glossary file is a term; a first line
+/// `alias: a, b` lists alternative spellings.
+pub fn parse_glossary(text: &str) -> Vec<Term> {
+    let doc = scan(text);
+    let mut terms = Vec::new();
+    for (i, h) in doc.headings.iter().enumerate() {
+        let mut name = String::new();
+        for (piece, _) in &h.pieces {
+            match piece {
+                Piece::Text(t) | Piece::Code(t) => name.push_str(t),
+            }
+        }
+        let name = name.split_whitespace().collect::<Vec<_>>().join(" ");
+        if name.is_empty() {
+            continue;
+        }
+        let end = doc
+            .headings
+            .get(i + 1)
+            .map_or(text.len(), |n| n.range.start);
+        let mut start = next_line(text, h.range.end.saturating_sub(1)).min(end);
+        let mut aliases = Vec::new();
+        if let Some((key_end, after)) = ident_colon(text.as_bytes(), start)
+            && text.get(start..key_end) == Some("alias")
+        {
+            let line_end = line_end(text, start).min(end);
+            aliases = text
+                .get(after..line_end)
+                .unwrap_or_default()
+                .split(',')
+                .map(str::trim)
+                .filter(|a| !a.is_empty())
+                .map(str::to_string)
+                .collect();
+            start = next_line(text, start).min(end);
+        }
+        terms.push(Term {
+            name,
+            heading: h.range.start..trim_end(text, h.range.clone()).end,
+            aliases,
+            definition: trim(text, start..end),
+        });
+    }
+    terms
 }
 
 /// Code blocks and inline code spans of a text, in document order (FR-009).
@@ -937,6 +999,21 @@ mod tests {
         assert_eq!(items[0].display_id(), "FR-?");
         assert_eq!(items[0].title, "New requirement");
         assert!(items[0].mentions.is_empty());
+    }
+
+    #[test]
+    fn fr_011_glossary_terms_with_aliases() {
+        let t = "# Glossary\n\n## Cart\nalias: basket, shopping cart\n\nItems a customer has selected.\n\n## Delivery country\n\nThe country.\n";
+        let terms = parse_glossary(t);
+        let names: Vec<&str> = terms.iter().map(|t| t.name.as_str()).collect();
+        assert_eq!(names, ["Glossary", "Cart", "Delivery country"]);
+        assert_eq!(terms[1].aliases, ["basket", "shopping cart"]);
+        assert_eq!(
+            &t[terms[1].definition.clone()],
+            "Items a customer has selected."
+        );
+        assert!(terms[2].aliases.is_empty());
+        assert_eq!(&t[terms[2].definition.clone()], "The country.");
     }
 
     #[test]

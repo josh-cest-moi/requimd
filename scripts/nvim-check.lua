@@ -97,15 +97,71 @@ end
 vim.cmd('silent! undo')
 vim.cmd('silent! undo')
 
+-- M3 (should items): inlay hints, glossary hover, code lens, rename.
+local hints = request('textDocument/inlayHint', {
+  textDocument = { uri = vim.uri_from_bufnr(buf) },
+  range = { start = { line = 0, character = 0 }, ['end'] = { line = 10, character = 0 } },
+})
+check('FR-209 inlay hints', hints and hints[1] and hints[1].label == 'Customer opens the cart.')
+
+-- Line 6 (1-based): "When the customer opens the cart, ..."
+local ghover = request('textDocument/hover', at(5, 30))
+check('FR-205 glossary hover', ghover and ghover.contents.value:find('not yet ordered', 1, true) ~= nil)
+
+local ren = request('textDocument/rename', at(3, 8, { newName = 'UC-099' }))
+local edits = 0
+for _, list in pairs(ren and ren.changes or {}) do edits = edits + #list end
+check('FR-214 rename', edits >= 6, tostring(edits))
+
+-- The code lens command handler recommended in docs/neovim.md.
+vim.lsp.commands['reqmd.implementations'] = function(command, ctx)
+  local c = vim.lsp.get_client_by_id(ctx.client_id)
+  local items = vim.lsp.util.locations_to_items(command.arguments[1], c.offset_encoding)
+  vim.fn.setqflist({}, ' ', { title = command.title, items = items })
+end
+local ucbuf = open(examples .. '/shop/usecases.md')
+local lenses = request('textDocument/codeLens', { textDocument = { uri = vim.uri_from_bufnr(ucbuf) } }, ucbuf)
+local lens = lenses and lenses[2]
+check('FR-215 code lens', lens and lens.command.title == '2 impl: FR-104, FR-105', lens and lens.command.title)
+if lens then
+  vim.lsp.commands['reqmd.implementations'](lens.command, { client_id = client.id })
+  check('FR-215 code lens lists implementations', #vim.fn.getqflist() == 2)
+end
+vim.api.nvim_set_current_buf(buf)
+
+-- FR-219 in a scratch project: "Allow in project" edits reqmd.toml.
+local scratch = vim.fn.tempname()
+vim.fn.mkdir(scratch, 'p')
+vim.fn.writefile({ '# my comment' }, scratch .. '/reqmd.toml')
+vim.fn.writefile({ '## FR-001 X', '', 'The system shall be fast.' }, scratch .. '/fr.md')
+local frbuf = open(scratch .. '/fr.md')
+vim.wait(5000, function() return #vim.diagnostic.get(frbuf) == 1 end, 20)
+local sclient = vim.lsp.get_clients({ bufnr = frbuf, name = 'reqmd' })[1]
+local res = vim.lsp.buf_request_sync(frbuf, 'textDocument/codeAction', {
+  textDocument = { uri = vim.uri_from_bufnr(frbuf) },
+  range = { start = { line = 2, character = 21 }, ['end'] = { line = 2, character = 21 } },
+  context = { diagnostics = {} },
+}, 5000)
+local allow
+for _, a in ipairs(res and res[sclient.id] and res[sclient.id].result or {}) do
+  if a.title:find('in project', 1, true) then allow = a end
+end
+if allow then sclient:exec_cmd(allow.command, { bufnr = frbuf }) end
+local cleared = vim.wait(5000, function() return #vim.diagnostic.get(frbuf) == 0 end, 20)
+local toml = table.concat(vim.fn.readfile(scratch .. '/reqmd.toml'), '\n')
+check('FR-219 allow in project', allow ~= nil and cleared
+  and toml:find('# my comment', 1, true) ~= nil and toml:find('allow = ["fast"]', 1, true) ~= nil, toml)
+vim.api.nvim_set_current_buf(buf)
+
 -- FR-202: diagnostics of the broken example, then live after an edit.
 local broken = open(examples .. '/broken/broken.md')
 local got = vim.wait(5000, function() return #vim.diagnostic.get(broken) > 0 end, 20)
 local count = #vim.diagnostic.get(broken)
-check('FR-202 diagnostics on open', got and count == 13, tostring(count))
+check('FR-202 diagnostics on open', got and count == 22, tostring(count))
 vim.api.nvim_buf_set_lines(broken, 10, 11, false, { 'impl: UC-001.s1  prio: must' })
-vim.wait(3000, function() return #vim.diagnostic.get(broken) == 11 end, 20)
+vim.wait(3000, function() return #vim.diagnostic.get(broken) == 20 end, 20)
 count = #vim.diagnostic.get(broken)
-check('FR-202 diagnostics after change', count == 11, tostring(count))
+check('FR-202 diagnostics after change', count == 20, tostring(count))
 
 -- Default keys from docs/neovim.md are mapped (Neovim 0.11+ defaults).
 local function mapped(lhs)

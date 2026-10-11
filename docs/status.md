@@ -1,6 +1,6 @@
 # Project status
 
-As of 2026-10-11. Update this file at the end of every working session.
+As of 2026-10-12. Update this file at the end of every working session.
 
 ## State
 
@@ -22,12 +22,30 @@ As of 2026-10-11. Update this file at the end of every working session.
   (10,000 random edits). NFR-007 is checked against Neovim 0.12.6 without
   plugins by `scripts/nvim-check.lua`, which `cargo test` runs when `nvim`
   is installed; all features pass (see `docs/neovim.md`).
-- **M3 Authoring comfort: next.**
+- **M3 Authoring comfort: implemented, CI not yet run.** Glossary (FR-011),
+  language checks FR-110, FR-111, FR-113, FR-114, FR-118, FR-119 (core
+  module `words.rs`, checks module `language.rs`), language server features
+  FR-205 glossary hover, FR-209, FR-213 to FR-215, FR-219 (`actions.rs`,
+  `reqmd.toml` edits with toml_edit), CLI `fmt`, `show`, `coverage`
+  (FR-304 to FR-306). `examples/broken` now yields all 22 rows of
+  `EXPECTED.md`. All M3 features also pass in Neovim 0.12.6
+  (`scripts/nvim-check.lua`). The server caches parse results of unchanged
+  files; NFR-001 p95 is 77 ms in a release build (plan: 100 ms).
+- **M4 Impact analysis: next** (lock file ADR first).
 
 ## Decision log
 
 | Date | Decision | Where recorded |
 |------|----------|----------------|
+| 2026-10-12 | Configured `words` extend the built-in lists; `allow` switches words off | FR-110, FR-118 |
+| 2026-10-12 | Built-in weak-word list: the 15 required words plus simple, efficient, sufficient, normally, usually, each with a reason | `crates/reqmd-core/src/config.rs` |
+| 2026-10-12 | Glossary alias `step` dropped from the spec's own glossary | `requirements/glossary.md` |
+| 2026-10-12 | Rename keeps the prefix; changing the type is a manual edit | FR-214 |
+| 2026-10-12 | `[lsp] hint-length` (40) and `stub-file`; a dangling step reference adds the step to its use case | FR-209, FR-213 |
+| 2026-10-12 | Code lens title lists IDs; running it needs a 4-line handler in the Neovim config, else the server opens the first item | FR-215, `docs/neovim.md` |
+| 2026-10-12 | "Add to weak words" writes an empty reason and opens `reqmd.toml` there | FR-219 |
+| 2026-10-12 | Language checks: title and body text, not metadata; typographic quotes ignored; aliases inside terms not reported; `unused-allow` per marker entry | FR-110, FR-114, FR-119 |
+| 2026-10-12 | Performance tests (NFR-001 to NFR-003) enforce their limits in release builds; CI runs them with `--release` | `.github/workflows/ci.yml` |
 | 2026-10-11 | Hover length: `[lsp] hover-length`, default 500 characters; glossary hover with FR-011 in M3 | FR-205 |
 | 2026-10-11 | FR-212 in M2 uses only IDs in the project; the lock file joins in M4 | this file |
 | 2026-10-11 | Go to implementation on a use case includes links to its steps | FR-208 |
@@ -56,8 +74,9 @@ As of 2026-10-11. Update this file at the end of every working session.
 1. **Spec review:** which items move from `draft` to `review` or `approved`?
    Only the owner sets `approved` (BR-004). Proposal: the M1 items
    (FR-001 to FR-014, FR-100 to FR-117, FR-300 to FR-303) to `review`.
-2. **Default weak-word list:** confirm the words and write a reason for
-   each (FR-110 names the minimum set).
+2. **Default weak-word list:** draft accepted on 2026-10-12 (see decision
+   log). Refine the reasons in `crates/reqmd-core/src/config.rs`
+   (`WEAK_WORDS`) whenever the wording should change.
 3. **Publishing audience:** who reads the requirements besides analysts and
    developers? Decides whether FR-405 (Confluence) moves up.
 4. **Name:** keep "reqmd" or choose a final name before the repo is public.
@@ -81,6 +100,21 @@ As of 2026-10-11. Update this file at the end of every working session.
    - Find references on an item also lists references to its steps.
    - Language features work only in included files (FR-201), also hover
      and go to definition, not only diagnostics and completion.
+7. **Interpretations in M3 to confirm:**
+   - The glossary file always belongs to the project, also when the
+     include patterns do not match it. If `[project] glossary` names a
+     missing file, `reqmd check` stops with a configuration error (exit
+     code 2); the language server then works without a glossary.
+   - FR-113: the first paragraph must start with "As a" or "As an" and
+     contain "I want" followed by "so that", ignoring case and line
+     breaks; the comma is not required.
+   - FR-111: "shall" counts anywhere in the text except code, also in
+     quotes.
+   - `reqmd show`: exit code 1 if the ID does not exist or is declared more
+     than once, 2 if the argument is no ID.
+   - Weak words are checked in types `functional` and `quality`, modal
+     verbs and "no shall" in `functional`, the story pattern in `story`:
+     fixed type names, like `usecase` for steps.
 
 ### Technical
 
@@ -94,11 +128,11 @@ As of 2026-10-11. Update this file at the end of every working session.
 
 1. Push this repository to GitHub and check the CI run (NFR-004, and
    NFR-007 on Linux and macOS).
-2. Owner: try the language server in Neovim (`docs/neovim.md`) and review
-   the spec changes and interpretations above.
-3. Start M3: glossary (FR-011), language checks (FR-110 ff.), further LSP
-   features (FR-209, FR-213 to FR-215, FR-219), CLI commands FR-304 to
-   FR-306.
+2. Owner: try the M3 features in Neovim (`docs/neovim.md`, including the
+   optional code lens handler) and review the interpretations above.
+3. ADR for the lock file format (technical question 1), then M4: suspect
+   links (FR-116), mark reviewed (FR-218), `reqmd review` (FR-307), and
+   the lock file in FR-212 (BR-002).
 
 ## Related documents outside the repo
 

@@ -91,6 +91,17 @@ pub struct BodyField {
     pub value_span: Range<usize>,
 }
 
+/// A glossary term: a heading of the glossary file (FR-011).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Term {
+    /// The preferred term, the heading text.
+    pub name: String,
+    pub heading: Range<usize>,
+    pub aliases: Vec<String>,
+    /// The definition text below the heading and alias line.
+    pub definition: Range<usize>,
+}
+
 /// A use case step such as `- s2: System shows the total.` (FR-006).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Step {

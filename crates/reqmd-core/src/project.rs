@@ -7,9 +7,9 @@ use std::path::{Path, PathBuf};
 use globset::{GlobBuilder, GlobSet, GlobSetBuilder};
 
 use crate::config::Config;
-use crate::model::{Item, Target};
-use crate::parse::parse_file;
-use crate::source::SourceFile;
+use crate::model::{Item, Target, Term};
+use crate::parse::{Parsed, parse, parse_glossary};
+use crate::source::{FileId, SourceFile};
 
 #[derive(Debug)]
 pub struct Project {
@@ -18,6 +18,11 @@ pub struct Project {
     pub files: Vec<SourceFile>,
     pub items: Vec<Item>,
     ids: HashMap<String, Vec<usize>>,
+    /// Glossary terms (FR-011) and the file they come from.
+    pub glossary: Vec<Term>,
+    pub glossary_file: Option<FileId>,
+    /// Code ranges per file (FR-009).
+    pub code: Vec<Vec<std::ops::Range<usize>>>,
 }
 
 /// Result of resolving a reference (FR-007, FR-100).
@@ -59,19 +64,49 @@ impl Project {
             path: root.clone(),
             message,
         })?;
+        if let Some(g) = glossary_rel(&config)
+            && !root.join(&g).is_file()
+        {
+            return Err(LoadError {
+                path: root.join(g),
+                message: "glossary file not found (set in [project] glossary)".into(),
+            });
+        }
         let mut files = Vec::new();
-        for (rel, path) in scan_files(&root, &includes)? {
+        for (rel, path) in project_files(&root, &config, &includes)? {
             let text = read_text(&path)?;
             files.push(SourceFile::new(path, rel, text));
         }
         Ok(Project::from_files(root, config, files))
     }
 
-    /// Builds a project from files already in memory.
+    /// Builds a project from files already in memory. The glossary is the
+    /// file whose relative path is the configured glossary (FR-011).
     pub fn from_files(root: PathBuf, config: Config, files: Vec<SourceFile>) -> Project {
+        let parsed = files
+            .iter()
+            .enumerate()
+            .map(|(id, f)| parse(&config, id, &f.text))
+            .collect();
+        Project::from_parsed(root, config, files, parsed)
+    }
+
+    /// Builds a project from files and their parse results, one per file in
+    /// the same order, e.g. cached by the language server.
+    pub fn from_parsed(
+        root: PathBuf,
+        config: Config,
+        files: Vec<SourceFile>,
+        parsed: Vec<Parsed>,
+    ) -> Project {
         let mut items = Vec::new();
-        for (id, f) in files.iter().enumerate() {
-            items.extend(parse_file(&config, id, &f.text));
+        let mut code = Vec::with_capacity(parsed.len());
+        for (id, p) in parsed.into_iter().enumerate() {
+            items.extend(p.items.into_iter().map(|mut it| {
+                it.file = id;
+                it
+            }));
+            code.push(p.code);
         }
         let mut ids: HashMap<String, Vec<usize>> = HashMap::new();
         for (i, item) in items.iter().enumerate() {
@@ -79,12 +114,21 @@ impl Project {
                 ids.entry(id.clone()).or_default().push(i);
             }
         }
+        let glossary_file =
+            glossary_rel(&config).and_then(|g| files.iter().position(|f| f.rel == g));
+        let glossary = glossary_file
+            .and_then(|i| files.get(i))
+            .map(|f| parse_glossary(&f.text))
+            .unwrap_or_default();
         Project {
             root,
             config,
             files,
             items,
             ids,
+            glossary,
+            glossary_file,
+            code,
         }
     }
 
@@ -112,8 +156,12 @@ impl Project {
     /// zero-padded to the configured digits. IDs in the lock file are added
     /// in M4 (BR-002).
     pub fn next_id(&self, prefix: &str) -> String {
-        let highest = self
-            .ids
+        self.format_id(prefix, self.highest_number(prefix).saturating_add(1))
+    }
+
+    /// The highest number of an ID with `prefix`, 0 if there is none.
+    pub fn highest_number(&self, prefix: &str) -> u64 {
+        self.ids
             .keys()
             .filter_map(|id| {
                 id.strip_prefix(prefix)?
@@ -122,12 +170,12 @@ impl Project {
                     .ok()
             })
             .max()
-            .unwrap_or(0);
-        format!(
-            "{prefix}-{:0width$}",
-            highest.saturating_add(1),
-            width = self.config.digits
-        )
+            .unwrap_or(0)
+    }
+
+    /// An ID with the configured number of digits (BR-001).
+    pub fn format_id(&self, prefix: &str, number: u64) -> String {
+        format!("{prefix}-{number:0width$}", width = self.config.digits)
     }
 }
 
@@ -186,6 +234,32 @@ pub fn scan_files(root: &Path, includes: &Includes) -> Result<Vec<(String, PathB
         };
         if includes.matches(&rel) {
             files.push((rel, entry.into_path()));
+        }
+    }
+    Ok(files)
+}
+
+/// The configured glossary path relative to the root, with `/`.
+pub fn glossary_rel(config: &Config) -> Option<String> {
+    let g = config.glossary.as_ref()?.replace('\\', "/");
+    Some(g.strip_prefix("./").unwrap_or(&g).to_string())
+}
+
+/// Included files plus the glossary file if it exists, which is part of
+/// the project even when the include patterns do not match it.
+pub fn project_files(
+    root: &Path,
+    config: &Config,
+    includes: &Includes,
+) -> Result<Vec<(String, PathBuf)>, LoadError> {
+    let mut files = scan_files(root, includes)?;
+    if let Some(g) = glossary_rel(config)
+        && !files.iter().any(|(rel, _)| *rel == g)
+    {
+        let path = root.join(&g);
+        if path.is_file() {
+            files.push((g, path));
+            files.sort();
         }
     }
     Ok(files)

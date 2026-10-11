@@ -10,9 +10,10 @@ as product owner.
 
 ## Status
 
-Specification done (M0); M1 (parser and `reqmd check`) and M2 (language
-server, `reqmd lsp`) implemented in the cargo workspace under `crates/`.
-Next is milestone M3 in `docs/roadmap.md`. Language server features are
+Specification done (M0); M1 (parser and `reqmd check`), M2 (language
+server, `reqmd lsp`) and M3 (glossary, language checks, authoring features)
+implemented in the cargo workspace under `crates/`. Next is milestone M4 in
+`docs/roadmap.md`, starting with an ADR for the lock file. Language server features are
 checked in real Neovim by `scripts/nvim-check.lua`. **Read `docs/status.md` first**: it holds the decision
 log, open questions and next steps.
 

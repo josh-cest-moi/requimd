@@ -16,6 +16,8 @@ struct Client {
     next_id: i32,
     /// Notifications received while waiting for responses.
     inbox: Vec<Notification>,
+    /// Requests from the server, e.g. window/showDocument.
+    server_requests: Vec<Request>,
 }
 
 impl Client {
@@ -29,6 +31,7 @@ impl Client {
             server: Some(server),
             next_id: 0,
             inbox: Vec::new(),
+            server_requests: Vec::new(),
         };
         let init = c.request(
             "initialize",
@@ -59,8 +62,8 @@ impl Client {
                     Err(e) => panic!("{method}: {e:?}"),
                 },
                 Message::Notification(n) => self.inbox.push(n),
-                // Requests from the server, e.g. client/registerCapability.
-                _ => {}
+                Message::Request(r) => self.server_requests.push(r),
+                Message::Response(_) => {}
             }
         }
     }
@@ -180,11 +183,14 @@ fn fr_201_files_outside_include_patterns_get_nothing() {
     let dir = temp_project(
         "scope",
         "[project]\ninclude = [\"req/*.md\"]\n",
-        &[("req/a.md", "## FR-? A\n"), ("notes.md", "## FR-? B\n")],
+        &[
+            ("req/a.md", "## FR-? A\n\nIt shall.\n"),
+            ("notes.md", "## FR-? B\n"),
+        ],
     );
     let (mut c, _) = Client::start(&dir, json!({}));
     c.open(&dir.join("notes.md"), "## FR-? B\n\nFR-1\n");
-    c.open(&dir.join("req/a.md"), "## FR-? A\n");
+    c.open(&dir.join("req/a.md"), "## FR-? A\n\nIt shall.\n");
     let d = c.diagnostics(&uri(&dir.join("req/a.md")), SECOND).unwrap();
     assert_eq!(checks(&d), ["placeholder"]);
     assert!(
@@ -202,7 +208,7 @@ fn fr_201_files_outside_include_patterns_get_nothing() {
 #[test]
 fn fr_202_diagnostics_on_open_change_and_in_other_documents() {
     let uc = "## UC-001 U\n\n- s1: Go.\n";
-    let fr = "## FR-001 F\n\nText.\n";
+    let fr = "## FR-001 F\n\nIt shall.\n";
     let dir = temp_project("live", "", &[("uc.md", uc), ("fr.md", fr)]);
     let (mut c, _) = Client::start(&dir, json!({}));
     let (uc_path, fr_path) = (dir.join("uc.md"), dir.join("fr.md"));
@@ -219,7 +225,7 @@ fn fr_202_diagnostics_on_open_change_and_in_other_documents() {
     c.change(
         &fr_path,
         2,
-        "## FR-001 F\nimpl: UC-001.s1  prio: urgent\n\nText.\n",
+        "## FR-001 F\nimpl: UC-001.s1  prio: urgent\n\nIt shall.\n",
     );
     let d = c.diagnostics(&uri(&fr_path), SECOND).unwrap();
     assert_eq!(checks(&d), ["invalid-value"]);
@@ -357,6 +363,122 @@ fn fr_203_to_fr_212_requests_over_protocol() {
     c.shutdown();
 }
 
+#[test]
+fn fr_209_to_fr_219_authoring_features_over_protocol() {
+    let uc = "## UC-001 Checkout\n\n- s1: Customer pays.\n- s2: Customer gets a receipt.\n";
+    let fr = "## FR-001 Payment\nimpl: UC-001.s1\n\nThe system shall be fast for the basket.\n";
+    let dir = temp_project(
+        "m3",
+        "# keep this comment\n[project]\ninclude = [\"req/*.md\"]\nglossary = \"glossary.md\"\n",
+        &[
+            ("req/uc.md", uc),
+            ("req/fr.md", fr),
+            (
+                "glossary.md",
+                "## Cart\nalias: basket\n\nItems not yet ordered.\n",
+            ),
+        ],
+    );
+    let (mut c, _) = Client::start(&dir, json!({}));
+    let (uc_path, fr_path) = (dir.join("req/uc.md"), dir.join("req/fr.md"));
+    c.open(&uc_path, uc);
+    c.open(&fr_path, fr);
+    let d = c.diagnostics(&uri(&fr_path), SECOND).unwrap();
+    assert_eq!(checks(&d), ["weak-word", "glossary-alias"]);
+    let fr_doc = json!({ "uri": uri(&fr_path) });
+
+    // FR-209
+    let hints = c.request(
+        "textDocument/inlayHint",
+        json!({ "textDocument": fr_doc, "range": { "start": { "line": 0, "character": 0 }, "end": { "line": 4, "character": 0 } } }),
+    );
+    assert_eq!(hints[0]["label"], "Customer pays.");
+    // FR-205: glossary hover from a file outside the include patterns.
+    let hover = c.request(
+        "textDocument/hover",
+        json!({ "textDocument": fr_doc, "position": { "line": 3, "character": 36 } }),
+    );
+    assert!(
+        hover["contents"]["value"]
+            .as_str()
+            .unwrap()
+            .contains("Items not yet ordered.")
+    );
+    // FR-215
+    let lenses = c.request(
+        "textDocument/codeLens",
+        json!({ "textDocument": { "uri": uri(&uc_path) } }),
+    );
+    assert_eq!(lenses[0]["command"]["title"], "1 impl: FR-001");
+    assert_eq!(lenses[1]["command"]["title"], "no implementation");
+    // FR-214
+    let renamed = c.request(
+        "textDocument/rename",
+        json!({ "textDocument": { "uri": uri(&uc_path) }, "position": { "line": 0, "character": 5 }, "newName": "UC-002" }),
+    );
+    let edits: usize = renamed["changes"]
+        .as_object()
+        .unwrap()
+        .values()
+        .map(|v| v.as_array().unwrap().len())
+        .sum();
+    assert_eq!(edits, 2);
+    // FR-213 on the uncovered step s2.
+    let actions = c.request(
+        "textDocument/codeAction",
+        json!({ "textDocument": { "uri": uri(&uc_path) },
+                "range": { "start": { "line": 3, "character": 3 }, "end": { "line": 3, "character": 3 } },
+                "context": { "diagnostics": [] } }),
+    );
+    assert_eq!(actions[0]["title"], "Create requirement for UC-001.s2");
+
+    // FR-219: "Allow in project" changes reqmd.toml and the diagnostics.
+    let actions = c.request(
+        "textDocument/codeAction",
+        json!({ "textDocument": fr_doc,
+                "range": { "start": { "line": 3, "character": 21 }, "end": { "line": 3, "character": 21 } },
+                "context": { "diagnostics": [] } }),
+    );
+    let titles: Vec<&str> = actions
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|a| a["title"].as_str().unwrap())
+        .collect();
+    assert_eq!(
+        titles,
+        [
+            "Allow \"fast\" on this line",
+            "Allow \"fast\" in project (weak-word)"
+        ]
+    );
+    c.request("workspace/executeCommand", actions[1]["command"].clone());
+    let config = fs::read_to_string(dir.join("reqmd.toml")).unwrap();
+    assert!(config.starts_with("# keep this comment\n"), "{config}");
+    assert!(config.contains("allow = [\"fast\"]"), "{config}");
+    let d = c.diagnostics(&uri(&fr_path), SECOND).unwrap();
+    assert_eq!(checks(&d), ["glossary-alias"]);
+
+    // "Add to weak words" opens reqmd.toml at the empty reason.
+    c.request(
+        "workspace/executeCommand",
+        json!({ "command": "reqmd.addWeakWord", "arguments": ["payment"] }),
+    );
+    let config = fs::read_to_string(dir.join("reqmd.toml")).unwrap();
+    assert!(
+        config.contains("{ w = \"payment\", why = \"\" }"),
+        "{config}"
+    );
+    let shown = &c
+        .server_requests
+        .iter()
+        .rfind(|r| r.method == "window/showDocument")
+        .unwrap()
+        .params;
+    assert!(shown["uri"].as_str().unwrap().ends_with("reqmd.toml"));
+    c.shutdown();
+}
+
 /// 2,000 items in 200 files (NFR-001 meter).
 fn generated_project(name: &str) -> PathBuf {
     let mut files = Vec::new();
@@ -402,9 +524,12 @@ fn nfr_001_diagnostics_latency_on_2000_items() {
     }
     times.sort();
     let p95 = times[times.len() * 95 / 100 - 1];
-    // must: 300 ms (release build); this unoptimised test is a coarse bound.
+    eprintln!("NFR-001 p95 {p95:?}");
+    // must: 300 ms for the shipped (release) binary; CI runs this test in
+    // release mode. Unoptimised builds only get a coarse bound.
+    let bound = if cfg!(debug_assertions) { 1000 } else { 300 };
     assert!(
-        p95 < Duration::from_millis(300),
+        p95 < Duration::from_millis(bound),
         "p95 {p95:?}, all {times:?}"
     );
     c.shutdown();

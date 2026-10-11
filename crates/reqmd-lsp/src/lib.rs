@@ -1,5 +1,6 @@
 //! Language server of reqmd (FR-200 ff.), built on lsp-server (ADR-0003).
 
+pub mod actions;
 pub mod convert;
 pub mod features;
 mod server;

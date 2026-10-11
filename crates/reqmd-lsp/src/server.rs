@@ -21,14 +21,21 @@ use lsp_types::{
     RegistrationParams, ServerCapabilities, ShowMessageParams, TextDocumentSyncCapability,
     TextDocumentSyncKind, Uri, WorkspaceSymbolParams, WorkspaceSymbolResponse,
 };
+use lsp_types::{
+    CodeLensOptions, CodeLensParams, ExecuteCommandOptions, ExecuteCommandParams, InlayHintParams,
+    Location, RenameOptions, RenameParams, ShowDocumentParams, TextDocumentPositionParams,
+    WorkDoneProgressOptions,
+};
 use reqmd_core::config::CONFIG_FILE;
+use reqmd_core::parse::{Parsed, parse};
 use reqmd_core::{
-    Config, FileId, Includes, Project, Severity, SourceFile, find_root, read_text, relative_path,
-    scan_files,
+    Config, FileId, Includes, Project, Severity, SourceFile, find_root, glossary_rel,
+    project_files, read_text, relative_path,
 };
 use serde_json::Value;
 
-use crate::convert::{Encoding, LineIndex, uri_to_path};
+use crate::actions;
+use crate::convert::{Encoding, LineIndex, path_to_uri, uri_to_path};
 use crate::features::{self, Ctx};
 
 /// Wait after the last change before diagnostics are published.
@@ -83,6 +90,24 @@ fn capabilities(encoding: Encoding) -> ServerCapabilities {
         document_symbol_provider: Some(OneOf::Left(true)),
         workspace_symbol_provider: Some(OneOf::Left(true)),
         code_action_provider: Some(CodeActionProviderCapability::Simple(true)),
+        inlay_hint_provider: Some(OneOf::Left(true)),
+        code_lens_provider: Some(CodeLensOptions {
+            resolve_provider: Some(false),
+        }),
+        rename_provider: Some(OneOf::Right(RenameOptions {
+            prepare_provider: Some(true),
+            work_done_progress_options: WorkDoneProgressOptions::default(),
+        })),
+        execute_command_provider: Some(ExecuteCommandOptions {
+            commands: [
+                features::IMPLEMENTATIONS_COMMAND,
+                actions::ALLOW_IN_PROJECT,
+                actions::ADD_WEAK_WORD,
+            ]
+            .map(String::from)
+            .to_vec(),
+            work_done_progress_options: WorkDoneProgressOptions::default(),
+        }),
         ..ServerCapabilities::default()
     }
 }
@@ -114,6 +139,8 @@ struct Server<'a> {
     file_ids: HashMap<String, FileId>,
     uris: HashMap<FileId, Uri>,
     published: HashMap<String, Vec<lsp_types::Diagnostic>>,
+    /// Text and parse result per file of the last rebuild.
+    parse_cache: HashMap<String, (String, Parsed)>,
     dirty_since: Option<Instant>,
     client_watches: bool,
     next_poll: Instant,
@@ -146,6 +173,7 @@ impl<'a> Server<'a> {
             file_ids: HashMap::new(),
             uris: HashMap::new(),
             published: HashMap::new(),
+            parse_cache: HashMap::new(),
             dirty_since: None,
             client_watches,
             next_poll: Instant::now() + POLL,
@@ -174,6 +202,8 @@ impl<'a> Server<'a> {
             Ok(config) => match Includes::new(&config.include) {
                 Ok(inc) => {
                     self.config = config;
+                    // Parsing depends on the configuration.
+                    self.parse_cache.clear();
                     self.includes = Some(inc);
                 }
                 Err(e) => self.show_error(&e),
@@ -197,8 +227,10 @@ impl<'a> Server<'a> {
         self.mark_dirty();
     }
 
+    /// FR-201: included files and the glossary (FR-011) are processed.
     fn is_included(&self, rel: &str) -> bool {
         self.includes.as_ref().is_some_and(|i| i.matches(rel))
+            || glossary_rel(&self.config).as_deref() == Some(rel)
     }
 
     /// Re-reads changed files on disk; returns whether anything changed.
@@ -206,7 +238,7 @@ impl<'a> Server<'a> {
         let (Some(root), Some(inc)) = (&self.root, &self.includes) else {
             return false;
         };
-        let found = match scan_files(root, inc) {
+        let found = match project_files(root, &self.config, inc) {
             Ok(f) => f,
             Err(e) => {
                 self.log(&e.to_string());
@@ -349,7 +381,19 @@ impl<'a> Server<'a> {
             self.file_ids.insert(rel.clone(), id);
             files.push(SourceFile::new(path, rel.clone(), text));
         }
-        self.project = Project::from_files(root, self.config.clone(), files);
+        // NFR-001: only changed files are parsed again.
+        let mut parsed = Vec::with_capacity(files.len());
+        let mut cache = HashMap::with_capacity(files.len());
+        for (id, f) in files.iter().enumerate() {
+            let result = match self.parse_cache.remove(&f.rel) {
+                Some((text, p)) if text == f.text => p,
+                _ => parse(&self.config, id, &f.text),
+            };
+            parsed.push(result.clone());
+            cache.insert(f.rel.clone(), (f.text.clone(), result));
+        }
+        self.parse_cache = cache;
+        self.project = Project::from_parsed(root, self.config.clone(), files, parsed);
     }
 
     /// FR-202: rebuilds and publishes changed diagnostics of open documents.
@@ -554,6 +598,11 @@ impl<'a> Server<'a> {
             "textDocument/documentSymbol" => self.document_symbols(req.params),
             "workspace/symbol" => self.workspace_symbols(req.params),
             "textDocument/codeAction" => self.code_actions(req.params),
+            "textDocument/inlayHint" => self.inlay_hints(req.params),
+            "textDocument/codeLens" => self.code_lenses(req.params),
+            "textDocument/prepareRename" => self.prepare_rename(req.params),
+            "textDocument/rename" => self.rename(req.params),
+            "workspace/executeCommand" => self.execute_command(req.params),
             _ => {
                 let resp = Response::new_err(
                     id,
@@ -566,9 +615,146 @@ impl<'a> Server<'a> {
         };
         let resp = match result {
             Ok(v) => Response::new_ok(id, v),
-            Err(e) => Response::new_err(id, ErrorCode::InvalidParams as i32, e),
+            // A refused rename or failed command is shown to the user.
+            Err(e) => Response::new_err(id, ErrorCode::RequestFailed as i32, e),
         };
         let _ = self.conn.sender.send(resp.into());
+    }
+
+    /// FR-209
+    fn inlay_hints(&mut self, params: Value) -> Result<Value, String> {
+        let p: InlayHintParams = serde_json::from_value(params).map_err(|e| e.to_string())?;
+        let uri = p.text_document.uri;
+        let (Some((file, start)), Some((_, end))) = (
+            self.locate(&uri, p.range.start),
+            self.locate(&uri, p.range.end),
+        ) else {
+            return Ok(Value::Null);
+        };
+        let hints = features::inlay_hints(&self.ctx(), file, start..end);
+        serde_json::to_value(hints).map_err(|e| e.to_string())
+    }
+
+    /// FR-215
+    fn code_lenses(&mut self, params: Value) -> Result<Value, String> {
+        let p: CodeLensParams = serde_json::from_value(params).map_err(|e| e.to_string())?;
+        let Some(rel) = self.rel_of(&p.text_document.uri) else {
+            return Ok(Value::Null);
+        };
+        let Some(&file) = self.file_ids.get(&rel) else {
+            return Ok(Value::Null);
+        };
+        serde_json::to_value(features::code_lenses(&self.ctx(), file)).map_err(|e| e.to_string())
+    }
+
+    /// FR-214
+    fn prepare_rename(&mut self, params: Value) -> Result<Value, String> {
+        let p: TextDocumentPositionParams =
+            serde_json::from_value(params).map_err(|e| e.to_string())?;
+        let Some((file, off)) = self.locate(&p.text_document.uri, p.position) else {
+            return Ok(Value::Null);
+        };
+        match features::prepare_rename(&self.ctx(), file, off) {
+            Some((range, placeholder)) => Ok(serde_json::json!({
+                "range": range, "placeholder": placeholder,
+            })),
+            None => Err("no item ID to rename here".into()),
+        }
+    }
+
+    /// FR-214
+    fn rename(&mut self, params: Value) -> Result<Value, String> {
+        let p: RenameParams = serde_json::from_value(params).map_err(|e| e.to_string())?;
+        let tdp = p.text_document_position;
+        let Some((file, off)) = self.locate(&tdp.text_document.uri, tdp.position) else {
+            return Err("not a file of the reqmd project".into());
+        };
+        let edit = features::rename(&self.ctx(), file, off, &p.new_name)?;
+        serde_json::to_value(edit).map_err(|e| e.to_string())
+    }
+
+    /// FR-215 and FR-219 commands.
+    fn execute_command(&mut self, params: Value) -> Result<Value, String> {
+        let p: ExecuteCommandParams = serde_json::from_value(params).map_err(|e| e.to_string())?;
+        let arg = |i: usize| {
+            p.arguments
+                .get(i)
+                .and_then(Value::as_str)
+                .map(str::to_string)
+        };
+        match p.command.as_str() {
+            features::IMPLEMENTATIONS_COMMAND => {
+                // Without a client-side handler: open the first one.
+                let locations: Vec<Location> = p
+                    .arguments
+                    .first()
+                    .and_then(|v| serde_json::from_value(v.clone()).ok())
+                    .unwrap_or_default();
+                if let Some(loc) = locations.first() {
+                    self.show_document(loc.uri.clone(), Some(loc.range));
+                }
+            }
+            actions::ALLOW_IN_PROJECT => {
+                let (Some(check), Some(word)) = (arg(0), arg(1)) else {
+                    return Err("expected check and word".into());
+                };
+                self.edit_config(|text| {
+                    actions::add_allow(text, &check, &word).map(|t| (t, None))
+                })?;
+            }
+            actions::ADD_WEAK_WORD => {
+                let Some(word) = arg(0) else {
+                    return Err("expected a word".into());
+                };
+                self.edit_config(|text| {
+                    actions::add_weak_word(text, &word).map(|(t, at)| (t, Some(at)))
+                })?;
+            }
+            other => return Err(format!("unknown command {other}")),
+        }
+        Ok(Value::Null)
+    }
+
+    /// FR-219: changes `reqmd.toml` on disk, reloads it and, if `edit`
+    /// returns an offset, opens the file there.
+    fn edit_config(
+        &mut self,
+        edit: impl FnOnce(&str) -> Result<(String, Option<usize>), String>,
+    ) -> Result<(), String> {
+        let root = self.root.clone().ok_or("no reqmd project")?;
+        let path = root.join(CONFIG_FILE);
+        let text = std::fs::read_to_string(&path).map_err(|e| e.to_string())?;
+        let (new, at) = edit(&text)?;
+        Config::from_toml(&new, Some(&path)).map_err(|e| e.to_string())?;
+        std::fs::write(&path, &new).map_err(|e| e.to_string())?;
+        self.load_config();
+        self.refresh();
+        if let (Some(at), Some(uri)) = (at, path_to_uri(&path)) {
+            let pos = LineIndex::new(&new, self.encoding).position(at);
+            self.show_document(
+                uri,
+                Some(lsp_types::Range {
+                    start: pos,
+                    end: pos,
+                }),
+            );
+        }
+        Ok(())
+    }
+
+    fn show_document(&mut self, uri: Uri, selection: Option<lsp_types::Range>) {
+        let params = ShowDocumentParams {
+            uri,
+            external: Some(false),
+            take_focus: Some(true),
+            selection,
+        };
+        let req = Request::new(
+            RequestId::from("reqmd-show".to_string()),
+            "window/showDocument".into(),
+            params,
+        );
+        let _ = self.conn.sender.send(req.into());
     }
 
     fn ctx(&self) -> Ctx<'_> {
@@ -651,8 +837,9 @@ impl<'a> Server<'a> {
         let Some((_, end)) = self.locate(&p.text_document.uri, p.range.end) else {
             return Ok(Value::Null);
         };
-        let actions = features::code_actions(&self.ctx(), file, start..end.max(start));
-        serde_json::to_value(actions).map_err(|e| e.to_string())
+        let diags = reqmd_checks::check(&self.project);
+        let list = actions::code_actions(&self.ctx(), file, start..end.max(start), &diags);
+        serde_json::to_value(list).map_err(|e| e.to_string())
     }
 
     fn notify(&self, method: &str, params: impl serde::Serialize) {
@@ -703,5 +890,7 @@ fn empty_config() -> Config {
         defaults: BTreeMap::new(),
         checks: BTreeMap::new(),
         hover_length: 500,
+        hint_length: 40,
+        stub_file: None,
     }
 }

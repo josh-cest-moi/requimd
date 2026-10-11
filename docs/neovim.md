@@ -22,6 +22,16 @@ vim.api.nvim_create_autocmd('LspAttach', {
     end
   end,
 })
+
+-- Optional, for the code lens on use case steps (FR-215): running a lens
+-- lists the implementing items in the quickfix list. Without it, the
+-- server opens the first implementing item.
+vim.lsp.commands['reqmd.implementations'] = function(command, ctx)
+  local client = vim.lsp.get_client_by_id(ctx.client_id)
+  local items = vim.lsp.util.locations_to_items(command.arguments[1], client.offset_encoding)
+  vim.fn.setqflist({}, ' ', { title = command.title, items = items })
+  vim.cmd.copen()
+end
 ```
 
 `root_markers` ensures the server only starts inside reqmd projects.
@@ -49,13 +59,24 @@ nvim --headless --clean -l scripts/nvim-check.lua target/release/reqmd
 | Workspace symbols | FR-211 | `:lua vim.lsp.buf.workspace_symbol()` | M2 |
 | Assign ID | FR-212 | `gra` on a `FR-?` heading | M2 |
 | External file changes | FR-217 | automatic (Neovim's file watcher, else server polling every 2 s) | M2 |
-| Create stub, mark reviewed | FR-213, FR-218 | `gra` | M3/M4 |
-| Rename | FR-214 | `grn` | M3 |
+| Glossary hover | FR-205 | `K` on a term or alias | M3 |
 | Inlay hints | FR-209 | enabled above | M3 |
-| Code lens | FR-215 | `vim.lsp.codelens` | M3 |
+| Create stub | FR-213 | `gra` on a dangling reference or an uncovered step | M3 |
+| Rename | FR-214 | `grn` on an item ID | M3 |
+| Code lens | FR-215 | `:lua vim.lsp.codelens.run()` on a step | M3 |
+| Language check actions | FR-219 | `gra` on a weak word, modal verb or alias, or on any word | M3 |
+| Mark reviewed | FR-218 | `gra` | M4 |
 
 Completion in body text finds items by ID or by a word of the title: type
-`VAT` and press `<C-x><C-o>` to get `FR-104`. Hover text length is set by
-`hover-length` in `[lsp]` of `reqmd.toml`.
+`VAT` and press `<C-x><C-o>` to get `FR-104`.
+
+Settings in `[lsp]` of `reqmd.toml`: `hover-length` (characters of item
+text on hover, default 500), `hint-length` (inlay hints, default 40) and
+`stub-file` (where FR-213 puts new stubs; default the current file).
+
+"Allow in project" and "Add to weak words" change `reqmd.toml` on disk and
+keep its comments. If you have `reqmd.toml` open with unsaved changes, save
+it first. "Add to weak words" then opens it at the new entry; type the
+reason between the quotes of `why`.
 
 Verify key defaults with `:help lsp-defaults` in your Neovim version.
