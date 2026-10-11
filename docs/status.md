@@ -7,13 +7,11 @@ As of 2026-10-12. Update this file at the end of every working session.
 - **M0 Specification: done.** Spec in `requirements/` (7 use cases, 5
   business rules, 69 functional and 10 quality requirements, all `draft`),
   fixtures in `examples/`, decisions in `docs/decisions/`.
-- **CI:** first runs on GitHub (2026-10-11) green on Linux and macOS, so
-  NFR-004 `must` is met and M1 to M3 are done. Windows failed in one step:
-  FR-217 with Neovim's file watcher, because Neovim on Windows reports
-  garbled paths for projects below an 8.3 short path (the runner's
-  `C:\Users\RUNNER~1`). Fixed in the server on 2026-10-12 (rescan on events
-  that do not fit the disk); waiting for a green Windows run, after which
-  Windows can become a required job (NFR-004 `plan`).
+- **CI:** green on Linux, macOS and Windows since 2026-10-12; all three
+  are required jobs (NFR-004 `plan`). Windows first failed because Neovim
+  on Windows reports garbled file-watch paths below 8.3 short paths such as
+  the runner's `C:\Users\RUNNER~1`; the server now rescans on events that
+  do not fit the disk. CI runs `requimd check --locked` before the tests.
 - **M1 Parser and check command: done.** Cargo
   workspace with `crates/requimd-core` (config, parser, item model),
   `crates/requimd-checks` and `crates/requimd-cli` (binary `requimd`). All `must`
@@ -37,13 +35,21 @@ As of 2026-10-12. Update this file at the end of every working session.
   `EXPECTED.md`. All M3 features also pass in Neovim 0.12.6
   (`scripts/nvim-check.lua`). The server caches parse results of unchanged
   files; NFR-001 p95 is 77 ms in a release build (plan: 100 ms).
-- **M4 Impact analysis: next.** Lock file decided (ADR-0007); spec
-  updated (FR-116, FR-212, FR-214, FR-218, FR-300, FR-307).
+- **M4 Impact analysis: implemented.** Lock file per ADR-0007 (core module
+  `lock.rs`: TOML, FNV-1a content hash, update, review, rename),
+  `suspect-link` check (FR-116), `check --locked` (FR-300), `requimd
+  review <ID> | --all` (FR-307), next free ID from the lock (FR-212); in
+  the language server: lock loaded and watched, links recorded on save,
+  "Mark as reviewed" (FR-218), rename rewrites lock entries (FR-214).
+  `requimd.lock` is committed for this repository and both examples. All
+  M4 features pass in Neovim 0.12.6.
+- **M5 Publishing: next.**
 
 ## Decision log
 
 | Date | Decision | Where recorded |
 |------|----------|----------------|
+| 2026-10-12 | The language server rewrites lock entries of a rename only once the documents show it, so a cancelled rename changes nothing | FR-214, `crates/requimd-lsp/src/server.rs` |
 | 2026-10-12 | Lock file `requimd.lock` in TOML, sorted, one line per link, plus `[ids]` | ADR-0007 |
 | 2026-10-12 | `check` adds and removes lock entries but never changes a hash; `--locked` for CI; the language server records on save | ADR-0007, FR-116, FR-300, FR-218 |
 | 2026-10-12 | Suspect-link hash ignores `status` and whitespace | ADR-0007, FR-116 |
@@ -140,13 +146,11 @@ As of 2026-10-12. Update this file at the end of every working session.
 
 ## Next steps
 
-1. Windows CI is green since 2026-10-12: remove `continue-on-error` for
-   Windows in `.github/workflows/ci.yml` (NFR-004 `plan`).
-2. Owner: try the M3 features in Neovim (`docs/neovim.md`, including the
-   optional code lens handler) and review the interpretations above.
-3. M4 per ADR-0007: lock file in `requimd-core`, suspect links (FR-116),
-   `check --locked` (FR-300), mark reviewed and record on save (FR-218),
-   `requimd review` (FR-307), lock file in FR-212 and FR-214.
+1. Owner: try M3 and M4 in Neovim (`docs/neovim.md`) and review the open
+   interpretations above (business questions 5 to 7).
+2. M5 Publishing: FR-400 to FR-402, then FR-403 to FR-405; NFR-005 and
+   release packaging. Business question 3 (publishing audience) decides
+   whether FR-405 (Confluence) moves up.
 
 ## Related documents outside the repo
 

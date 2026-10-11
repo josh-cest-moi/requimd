@@ -1,4 +1,4 @@
-# CI per ADR-0004. Windows may fail until NFR-004 `plan` is met.
+# CI per ADR-0004. Linux, macOS and Windows are required (NFR-004 `plan`).
 name: CI
 
 on:
@@ -14,7 +14,6 @@ jobs:
   test:
     name: test (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
-    continue-on-error: ${{ matrix.os == 'windows-latest' }}
     strategy:
       fail-fast: false
       matrix:
@@ -32,11 +31,13 @@ jobs:
           version: stable
       - run: cargo fmt --all --check
       - run: cargo clippy --all-targets -- -D warnings
+      # Before the tests, which run `requimd check` and would update an
+      # outdated lock file (ADR-0007).
+      - name: requimd check on this repository
+        run: cargo run --quiet -- check --locked
+      - name: requimd check on examples/shop
+        run: cargo run --quiet --manifest-path ../../Cargo.toml -- check --strict --locked
+        working-directory: examples/shop
       - run: cargo test --all
       - name: Performance tests in release mode (NFR-001 to NFR-003)
         run: cargo test --release -p requimd-lsp -p requimd-checks nfr_00
-      - name: requimd check on this repository
-        run: cargo run --quiet -- check
-      - name: requimd check on examples/shop
-        run: cargo run --quiet --manifest-path ../../Cargo.toml -- check --strict
-        working-directory: examples/shop

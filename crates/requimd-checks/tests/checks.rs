@@ -400,6 +400,35 @@ fn fr_119_markers_in_code_are_ignored() {
     assert_eq!(language("", t), []);
 }
 
+#[test]
+fn fr_116_suspect_link_after_target_change() {
+    let uc = "## UC-001 U\n\n- s1: Customer pays.\n- s2: Receipt.\n";
+    let fr = "## FR-001 F\nimpl: UC-001.s1, UC-001.s2\n\nThe system shall charge.\n\nSee UC-001.\n";
+    // Record the lock as a first check would.
+    let before = project_with("", &[("fr.md", fr), ("uc.md", uc)]);
+    let lock = before.lock.updated(&before);
+    assert_eq!(lock.links.len(), 2);
+
+    // s1 is reworded, s2 only re-wrapped: only the s1 link is suspect.
+    let changed = uc
+        .replace("Customer pays.", "Customer pays by card.")
+        .replace("- s2: Receipt.", "- s2:\n  Receipt.");
+    let mut after = project_with("", &[("fr.md", fr), ("uc.md", &changed)]);
+    after.lock = lock.clone();
+    let suspect: Vec<_> = check(&after)
+        .into_iter()
+        .filter(|d| d.check == "suspect-link")
+        .collect();
+    assert_eq!(suspect.len(), 1);
+    assert_eq!(&after.files[0].text[suspect[0].span.clone()], "UC-001.s1");
+    assert_eq!(suspect[0].severity, Warning);
+
+    // Without lock entries nothing is suspect; mentions never are.
+    let mut fresh = project_with("", &[("fr.md", fr), ("uc.md", &changed)]);
+    fresh.lock = Default::default();
+    assert!(check(&fresh).iter().all(|d| d.check != "suspect-link"));
+}
+
 fn fixture(name: &str) -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("../../examples")

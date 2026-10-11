@@ -488,6 +488,85 @@ fn fr_209_to_fr_219_authoring_features_over_protocol() {
     c.shutdown();
 }
 
+#[test]
+fn fr_116_fr_218_suspect_links_over_protocol() {
+    let uc = "## UC-001 Pay\n\n- s1: Customer pays.\n";
+    let fr = "## FR-001 Charge\nimpl: UC-001.s1\n\nThe system shall charge.\n";
+    let dir = temp_project("suspect", "", &[("uc.md", uc), ("fr.md", fr)]);
+    let (mut c, _) = Client::start(&dir, json!({}));
+    let (uc_path, fr_path) = (dir.join("uc.md"), dir.join("fr.md"));
+    c.open(&fr_path, fr);
+    c.open(&uc_path, uc);
+    c.diagnostics(&uri(&fr_path), SECOND).unwrap();
+
+    // FR-218: saving records the link.
+    c.notify(
+        "textDocument/didSave",
+        json!({ "textDocument": { "uri": uri(&fr_path) } }),
+    );
+    let lock_path = dir.join("requimd.lock");
+    let recorded = (0..50).any(|_| {
+        std::thread::sleep(Duration::from_millis(20));
+        fs::read_to_string(&lock_path).is_ok_and(|l| l.contains("\"FR-001 impl UC-001.s1\""))
+    });
+    assert!(recorded, "lock not written on save");
+
+    // FR-116: rewording the step (unsaved) makes the link suspect.
+    c.change(
+        &uc_path,
+        2,
+        "## UC-001 Pay\n\n- s1: Customer pays by card.\n",
+    );
+    let d = loop {
+        let d = c.diagnostics(&uri(&fr_path), SECOND).unwrap();
+        if !d.is_empty() {
+            break d;
+        }
+    };
+    assert_eq!(checks(&d), ["suspect-link"]);
+
+    // FR-218: the code action marks it as reviewed.
+    let actions = c.request(
+        "textDocument/codeAction",
+        json!({ "textDocument": { "uri": uri(&fr_path) },
+                "range": { "start": { "line": 1, "character": 8 }, "end": { "line": 1, "character": 8 } },
+                "context": { "diagnostics": [] } }),
+    );
+    assert_eq!(actions[0]["title"], "Mark link to UC-001.s1 as reviewed");
+    c.request("workspace/executeCommand", actions[0]["command"].clone());
+    assert!(c.diagnostics(&uri(&fr_path), SECOND).unwrap().is_empty());
+    let reviewed = fs::read_to_string(&lock_path).unwrap();
+
+    // FR-214: a rename moves the lock entry once the client applied it, so
+    // nothing turns suspect. A rename that is only requested changes nothing.
+    c.request(
+        "textDocument/rename",
+        json!({ "textDocument": { "uri": uri(&uc_path) }, "position": { "line": 0, "character": 5 }, "newName": "UC-002" }),
+    );
+    c.request("workspace/symbol", json!({ "query": "" }));
+    assert_eq!(fs::read_to_string(&lock_path).unwrap(), reviewed);
+    c.change(
+        &uc_path,
+        3,
+        "## UC-002 Pay\n\n- s1: Customer pays by card.\n",
+    );
+    c.change(&fr_path, 2, &fr.replace("UC-001", "UC-002"));
+    let moved = (0..50).any(|_| {
+        std::thread::sleep(Duration::from_millis(20));
+        fs::read_to_string(&lock_path).is_ok_and(|l| l.contains("UC-002"))
+    });
+    assert!(moved, "lock entry not renamed");
+    let lock = fs::read_to_string(&lock_path).unwrap();
+    assert!(lock.contains("\"FR-001 impl UC-002.s1\""), "{lock}");
+    assert!(!lock.contains("UC-001"), "{lock}");
+    assert_eq!(
+        reviewed.split("= ").last(),
+        lock.split("= ").last(),
+        "the reviewed hash is kept"
+    );
+    c.shutdown();
+}
+
 /// 2,000 items in 200 files (NFR-001 meter).
 fn generated_project(name: &str) -> PathBuf {
     let mut files = Vec::new();

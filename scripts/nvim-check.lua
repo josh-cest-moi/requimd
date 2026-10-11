@@ -153,6 +153,40 @@ check('FR-219 allow in project', allow ~= nil and cleared
   and toml:find('# my comment', 1, true) ~= nil and toml:find('allow = ["fast"]', 1, true) ~= nil, toml)
 vim.api.nvim_set_current_buf(buf)
 
+-- M4: saving records links (FR-218), a changed target makes the link
+-- suspect (FR-116), and the code action marks it as reviewed.
+local m4 = vim.fn.tempname()
+vim.fn.mkdir(m4, 'p')
+vim.fn.writefile({}, m4 .. '/requimd.toml')
+vim.fn.writefile({ '## UC-001 Pay', '', '- s1: Customer pays.' }, m4 .. '/uc.md')
+vim.fn.writefile({ '## FR-001 Charge', 'impl: UC-001.s1', '', 'The system shall charge.' }, m4 .. '/fr.md')
+local m4fr = open(m4 .. '/fr.md')
+vim.wait(3000, function() return #vim.lsp.get_clients({ bufnr = m4fr, name = 'requimd' }) > 0 end, 20)
+vim.cmd('silent write')
+local saved = vim.wait(3000, function() return vim.fn.filereadable(m4 .. '/requimd.lock') == 1 end, 20)
+check('FR-218 links recorded on save', saved)
+local m4uc = open(m4 .. '/uc.md')
+vim.api.nvim_buf_set_lines(m4uc, 2, 3, false, { '- s1: Customer pays by card.' })
+local suspect = vim.wait(3000, function()
+  for _, d in ipairs(vim.diagnostic.get(m4fr)) do
+    if d.code == 'suspect-link' then return true end
+  end
+  return false
+end, 20)
+check('FR-116 suspect link', suspect)
+local m4client = vim.lsp.get_clients({ bufnr = m4fr, name = 'requimd' })[1]
+local acts = vim.lsp.buf_request_sync(m4fr, 'textDocument/codeAction', {
+  textDocument = { uri = vim.uri_from_bufnr(m4fr) },
+  range = { start = { line = 1, character = 8 }, ['end'] = { line = 1, character = 8 } },
+  context = { diagnostics = {} },
+}, 5000)
+local mark = acts and acts[m4client.id] and acts[m4client.id].result and acts[m4client.id].result[1]
+if mark and mark.command then m4client:exec_cmd(mark.command, { bufnr = m4fr }) end
+local cleared = vim.wait(3000, function() return #vim.diagnostic.get(m4fr) == 0 end, 20)
+check('FR-218 mark as reviewed', mark ~= nil and cleared, mark and mark.title)
+vim.cmd('silent! %bwipeout!')
+buf = open(examples .. '/shop/functional.md')
+
 -- FR-202: diagnostics of the broken example, then live after an edit.
 local broken = open(examples .. '/broken/broken.md')
 local got = vim.wait(5000, function() return #vim.diagnostic.get(broken) > 0 end, 20)

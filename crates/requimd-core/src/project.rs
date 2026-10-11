@@ -7,6 +7,7 @@ use std::path::{Path, PathBuf};
 use globset::{GlobBuilder, GlobSet, GlobSetBuilder};
 
 use crate::config::Config;
+use crate::lock::{LOCK_FILE, Lock};
 use crate::model::{Item, Target, Term};
 use crate::parse::{Parsed, parse, parse_glossary};
 use crate::source::{FileId, SourceFile};
@@ -23,6 +24,8 @@ pub struct Project {
     pub glossary_file: Option<FileId>,
     /// Code ranges per file (FR-009).
     pub code: Vec<Vec<std::ops::Range<usize>>>,
+    /// The lock file as read (ADR-0007); empty if there is none.
+    pub lock: Lock,
 }
 
 /// Result of resolving a reference (FR-007, FR-100).
@@ -72,12 +75,18 @@ impl Project {
                 message: "glossary file not found (set in [project] glossary)".into(),
             });
         }
+        let lock = Lock::load(&root).map_err(|message| LoadError {
+            path: root.join(LOCK_FILE),
+            message,
+        })?;
         let mut files = Vec::new();
         for (rel, path) in project_files(&root, &config, &includes)? {
             let text = read_text(&path)?;
             files.push(SourceFile::new(path, rel, text));
         }
-        Ok(Project::from_files(root, config, files))
+        let mut project = Project::from_files(root, config, files);
+        project.lock = lock;
+        Ok(project)
     }
 
     /// Builds a project from files already in memory. The glossary is the
@@ -129,6 +138,7 @@ impl Project {
             glossary,
             glossary_file,
             code,
+            lock: Lock::default(),
         }
     }
 
@@ -152,16 +162,18 @@ impl Project {
             .map_or(Resolution::MissingStep(item), |s| Resolution::Step(item, s))
     }
 
-    /// FR-212: one higher than the highest ID of `prefix` in the project,
-    /// zero-padded to the configured digits. IDs in the lock file are added
-    /// in M4 (BR-002).
+    /// FR-212: one higher than the highest ID of `prefix` in the project
+    /// and in the lock file, zero-padded to the configured digits, so
+    /// deleted IDs are not reused (BR-002).
     pub fn next_id(&self, prefix: &str) -> String {
         self.format_id(prefix, self.highest_number(prefix).saturating_add(1))
     }
 
-    /// The highest number of an ID with `prefix`, 0 if there is none.
+    /// The highest number of an ID with `prefix` in the project and the
+    /// lock file, 0 if there is none.
     pub fn highest_number(&self, prefix: &str) -> u64 {
-        self.ids
+        let in_project = self
+            .ids
             .keys()
             .filter_map(|id| {
                 id.strip_prefix(prefix)?
@@ -170,7 +182,8 @@ impl Project {
                     .ok()
             })
             .max()
-            .unwrap_or(0)
+            .unwrap_or(0);
+        in_project.max(self.lock.ids.get(prefix).copied().unwrap_or(0))
     }
 
     /// An ID with the configured number of digits (BR-001).

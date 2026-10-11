@@ -26,8 +26,10 @@ use lsp_types::{
     Location, RenameOptions, RenameParams, ShowDocumentParams, TextDocumentPositionParams,
     WorkDoneProgressOptions,
 };
+use lsp_types::{DidSaveTextDocumentParams, TextDocumentSyncOptions, TextDocumentSyncSaveOptions};
 use requimd_core::config::CONFIG_FILE;
-use requimd_core::parse::{Parsed, parse};
+use requimd_core::lock::{LOCK_FILE, Lock, target_hash};
+use requimd_core::parse::{Parsed, parse, parse_target};
 use requimd_core::{
     Config, FileId, Includes, Project, Severity, SourceFile, find_root, glossary_rel,
     project_files, read_text, relative_path,
@@ -78,7 +80,15 @@ fn capabilities(encoding: Encoding) -> ServerCapabilities {
             Encoding::Utf8 => PositionEncodingKind::UTF8,
             Encoding::Utf16 => PositionEncodingKind::UTF16,
         }),
-        text_document_sync: Some(TextDocumentSyncCapability::Kind(TextDocumentSyncKind::FULL)),
+        text_document_sync: Some(TextDocumentSyncCapability::Options(
+            TextDocumentSyncOptions {
+                open_close: Some(true),
+                change: Some(TextDocumentSyncKind::FULL),
+                // FR-218: links are recorded on save.
+                save: Some(TextDocumentSyncSaveOptions::Supported(true)),
+                ..TextDocumentSyncOptions::default()
+            },
+        )),
         completion_provider: Some(CompletionOptions {
             trigger_characters: Some(["-", ".", " ", ",", ":"].map(String::from).to_vec()),
             ..CompletionOptions::default()
@@ -103,6 +113,7 @@ fn capabilities(encoding: Encoding) -> ServerCapabilities {
                 features::IMPLEMENTATIONS_COMMAND,
                 actions::ALLOW_IN_PROJECT,
                 actions::ADD_WEAK_WORD,
+                actions::MARK_REVIEWED,
             ]
             .map(String::from)
             .to_vec(),
@@ -131,6 +142,11 @@ struct Server<'a> {
     config: Config,
     includes: Option<Includes>,
     config_modified: Option<SystemTime>,
+    /// The lock file (ADR-0007) and its modification time.
+    lock: Lock,
+    lock_modified: Option<SystemTime>,
+    /// Renames (old, new) answered but not yet seen in the documents.
+    pending_renames: Vec<(String, String)>,
     /// Included files on disk by relative path.
     disk: BTreeMap<String, DiskFile>,
     /// Open, included documents by relative path.
@@ -168,6 +184,9 @@ impl<'a> Server<'a> {
             config,
             includes: None,
             config_modified: None,
+            lock: Lock::default(),
+            lock_modified: None,
+            pending_renames: Vec::new(),
             disk: BTreeMap::new(),
             open: BTreeMap::new(),
             file_ids: HashMap::new(),
@@ -218,6 +237,7 @@ impl<'a> Server<'a> {
             }
         }
         self.rescan();
+        self.reload_lock_if_changed();
         // Open documents may no longer be included, or now be.
         let open: Vec<String> = self.open.keys().cloned().collect();
         for rel in open {
@@ -283,6 +303,7 @@ impl<'a> Server<'a> {
                     "watchers": [
                         { "globPattern": "**/*.md" },
                         { "globPattern": format!("**/{CONFIG_FILE}") },
+                        { "globPattern": format!("**/{LOCK_FILE}") },
                     ]
                 })),
             }],
@@ -344,9 +365,51 @@ impl<'a> Server<'a> {
         };
         if modified(&root.join(CONFIG_FILE)) != self.config_modified {
             self.load_config();
-        } else if self.rescan() {
-            self.mark_dirty();
+        } else {
+            let lock_changed = self.reload_lock_if_changed();
+            if self.rescan() || lock_changed {
+                self.mark_dirty();
+            }
         }
+    }
+
+    /// ADR-0007: reads the lock file if it changed on disk, e.g. by a git
+    /// checkout or `requimd check`. An unreadable lock keeps the last one.
+    fn reload_lock_if_changed(&mut self) -> bool {
+        let Some(root) = self.root.clone() else {
+            return false;
+        };
+        let m = modified(&root.join(LOCK_FILE));
+        if m == self.lock_modified {
+            return false;
+        }
+        self.lock_modified = m;
+        match Lock::load(&root) {
+            Ok(lock) => {
+                self.lock = lock;
+                true
+            }
+            Err(e) => {
+                self.show_error(&format!("{LOCK_FILE}: {e}"));
+                false
+            }
+        }
+    }
+
+    /// Writes the lock file if `lock` differs from the current one.
+    fn store_lock(&mut self, lock: Lock) -> Result<(), String> {
+        let Some(root) = self.root.clone() else {
+            return Ok(());
+        };
+        let path = root.join(LOCK_FILE);
+        if lock == self.lock && (path.exists() || lock == Lock::default()) {
+            return Ok(());
+        }
+        std::fs::write(&path, lock.to_toml()).map_err(|e| format!("{}: {e}", path.display()))?;
+        self.lock_modified = modified(&path);
+        self.lock = lock;
+        self.mark_dirty();
+        Ok(())
     }
 
     fn mark_dirty(&mut self) {
@@ -395,12 +458,16 @@ impl<'a> Server<'a> {
         }
         self.parse_cache = cache;
         self.project = Project::from_parsed(root, self.config.clone(), files, parsed);
+        self.project.lock = self.lock.clone();
     }
 
     /// FR-202: rebuilds and publishes changed diagnostics of open documents.
     fn refresh(&mut self) {
         self.dirty_since = None;
         self.rebuild();
+        if !self.pending_renames.is_empty() {
+            self.apply_pending_renames();
+        }
         let mut by_file: HashMap<FileId, Vec<lsp_types::Diagnostic>> = HashMap::new();
         for d in requimd_checks::check(&self.project) {
             let Some(f) = self.project.files.get(d.file) else {
@@ -520,6 +587,20 @@ impl<'a> Server<'a> {
                     self.mark_dirty();
                 }
             }
+            // FR-218: record new links of the project, as a check does.
+            "textDocument/didSave" => {
+                let Ok(p) = serde_json::from_value::<DidSaveTextDocumentParams>(n.params) else {
+                    return;
+                };
+                if self.rel_of(&p.text_document.uri).is_none() {
+                    return;
+                }
+                self.ensure_fresh();
+                let updated = self.lock.updated(&self.project);
+                if let Err(e) = self.store_lock(updated) {
+                    self.log(&e);
+                }
+            }
             "textDocument/didClose" => {
                 let Ok(p) = serde_json::from_value::<DidCloseTextDocumentParams>(n.params) else {
                     return;
@@ -555,6 +636,12 @@ impl<'a> Server<'a> {
             };
             if path == root.join(CONFIG_FILE) {
                 config_changed = true;
+                continue;
+            }
+            if path == root.join(LOCK_FILE) {
+                if self.reload_lock_if_changed() {
+                    self.mark_dirty();
+                }
                 continue;
             }
             let Some(rel) = relative_path(&root, &path) else {
@@ -688,8 +775,42 @@ impl<'a> Server<'a> {
         let Some((file, off)) = self.locate(&tdp.text_document.uri, tdp.position) else {
             return Err("not a file of the requimd project".into());
         };
+        let old = features::prepare_rename(&self.ctx(), file, off).map(|(_, id)| id);
         let edit = features::rename(&self.ctx(), file, off, &p.new_name)?;
+        // The lock entries follow the ID once the client has applied the
+        // edit, so the rename makes no link suspect and keeps pending
+        // reviews (ADR-0007). A rename that is not applied changes nothing.
+        if let Some(old) = old {
+            self.pending_renames.retain(|(o, _)| *o != old);
+            self.pending_renames
+                .push((old, p.new_name.trim().to_string()));
+        }
         serde_json::to_value(edit).map_err(|e| e.to_string())
+    }
+
+    /// FR-214: rewrites lock entries of renames the documents now show.
+    fn apply_pending_renames(&mut self) {
+        let done: Vec<(String, String)> = self
+            .pending_renames
+            .iter()
+            .filter(|(old, new)| {
+                self.project.declarations(old).is_empty()
+                    && self.project.declarations(new).len() == 1
+            })
+            .cloned()
+            .collect();
+        if done.is_empty() {
+            return;
+        }
+        self.pending_renames.retain(|r| !done.contains(r));
+        let mut lock = self.lock.clone();
+        for (old, new) in &done {
+            lock = lock.renamed(old, new);
+        }
+        if let Err(e) = self.store_lock(lock) {
+            self.log(&e);
+        }
+        self.project.lock = self.lock.clone();
     }
 
     /// FR-215 and FR-219 commands.
@@ -712,6 +833,22 @@ impl<'a> Server<'a> {
                 if let Some(loc) = locations.first() {
                     self.show_document(loc.uri.clone(), Some(loc.range));
                 }
+            }
+            actions::MARK_REVIEWED => {
+                let Some(key) = arg(0) else {
+                    return Err("expected a link".into());
+                };
+                // New links are recorded first, as on save.
+                let mut lock = self.lock.updated(&self.project);
+                let current = key
+                    .splitn(3, ' ')
+                    .nth(2)
+                    .and_then(|t| parse_target(&self.project.config, t))
+                    .and_then(|t| target_hash(&self.project, &t))
+                    .ok_or("the link target does not exist")?;
+                lock.links.insert(key, current);
+                self.store_lock(lock)?;
+                self.refresh();
             }
             actions::ALLOW_IN_PROJECT => {
                 let (Some(check), Some(word)) = (arg(0), arg(1)) else {

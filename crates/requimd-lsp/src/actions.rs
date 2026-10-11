@@ -11,6 +11,7 @@ use lsp_types::{
     ResourceOp, TextDocumentEdit, TextEdit, Uri, WorkspaceEdit,
 };
 use requimd_core::config::{ALLOW_CHECKS, FUNCTIONAL, IMPL, USECASE};
+use requimd_core::lock::link_key;
 use requimd_core::parse::code_ranges;
 use requimd_core::words::{is_word_char, markers, overlaps};
 use requimd_core::{Diagnostic, FileId, Item, Project, Resolution};
@@ -20,6 +21,7 @@ use crate::convert::{LineIndex, path_to_uri};
 use crate::features::{self, Ctx};
 
 pub const ALLOW_IN_PROJECT: &str = "requimd.allowInProject";
+pub const MARK_REVIEWED: &str = "requimd.markReviewed";
 pub const ADD_WEAK_WORD: &str = "requimd.addWeakWord";
 
 /// All code actions for `range` of `file`. `diags` are the project's
@@ -31,6 +33,7 @@ pub fn code_actions(
     diags: &[Diagnostic],
 ) -> Vec<CodeActionOrCommand> {
     let mut out = features::code_actions(ctx, file, range.clone());
+    out.extend(review_actions(ctx, file, &range, diags));
     out.extend(stub_actions(ctx, file, &range));
     out.extend(language_actions(ctx, file, &range, diags));
     out
@@ -60,6 +63,39 @@ fn single_edit(uri: Uri, edit: TextEdit) -> WorkspaceEdit {
 
 fn overlapping(span: &Range<usize>, range: &Range<usize>) -> bool {
     span.start <= range.end && range.start <= span.end
+}
+
+/// FR-218: "Mark as reviewed" on a suspect link. The server records the
+/// current target hash when the command runs.
+fn review_actions(
+    ctx: &Ctx,
+    file: FileId,
+    range: &Range<usize>,
+    diags: &[Diagnostic],
+) -> Vec<CodeActionOrCommand> {
+    let p = ctx.project;
+    let mut out = Vec::new();
+    for d in diags {
+        if d.file != file || d.check != "suspect-link" || !overlapping(&d.span, range) {
+            continue;
+        }
+        for item in p.items.iter().filter(|it| it.file == file) {
+            let Some(id) = &item.id else { continue };
+            for link in item.links.iter().filter(|l| l.reference.span == d.span) {
+                let key = link_key(id, &link.key, &link.reference.text);
+                out.push(action(
+                    format!("Mark link to {} as reviewed", link.reference.text),
+                    None,
+                    Some(Command {
+                        title: format!("Mark {key} as reviewed"),
+                        command: MARK_REVIEWED.into(),
+                        arguments: Some(vec![json!(key)]),
+                    }),
+                ));
+            }
+        }
+    }
+    out
 }
 
 /// FR-213: stubs for dangling references and uncovered steps, and missing

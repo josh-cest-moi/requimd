@@ -11,9 +11,10 @@ as product owner.
 ## Status
 
 Specification done (M0); M1 (parser and `requimd check`), M2 (language
-server, `requimd lsp`) and M3 (glossary, language checks, authoring features)
-implemented in the cargo workspace under `crates/`. Next is milestone M4 in
-`docs/roadmap.md`, starting with an ADR for the lock file. **Read
+server, `requimd lsp`), M3 (glossary, language checks, authoring features)
+and M4 (lock file and suspect links, ADR-0007) implemented in the cargo
+workspace under `crates/`. Next is milestone M5 (publishing) in
+`docs/roadmap.md`. **Read
 `docs/status.md` first**: it holds the decision log, open questions and
 next steps.
 

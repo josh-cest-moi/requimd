@@ -291,6 +291,139 @@ fn fr_305_show_item_and_step_with_references() {
     );
 }
 
+const UC: &str = "## UC-001 Pay\n\n- s1: Customer pays.\n";
+const FR: &str = "## FR-001 Charge\nimpl: UC-001.s1\n\nThe system shall charge the card.\n";
+
+#[test]
+fn fr_116_check_records_links_and_reports_changed_targets() {
+    let dir = temp_dir("suspect");
+    write(&dir, "requimd.toml", "");
+    write(&dir, "uc.md", UC);
+    write(&dir, "fr.md", FR);
+    assert_eq!(requimd(&dir, &["check"]).status.code(), Some(0));
+    let lock = fs::read_to_string(dir.join("requimd.lock")).unwrap();
+    assert!(
+        lock.contains("\"FR-001 impl UC-001.s1\" = \"7b2f59d518e62b12\""),
+        "{lock}"
+    );
+    assert!(lock.contains("[ids]\nFR = 1\nUC = 1\n"), "{lock}");
+
+    // Re-wrapping is no change; rewording is.
+    write(&dir, "uc.md", "## UC-001 Pay\n\n- s1: Customer\n  pays.\n");
+    assert_eq!(stdout(&requimd(&dir, &["check"])), "");
+    write(
+        &dir,
+        "uc.md",
+        "## UC-001 Pay\n\n- s1: Customer pays by card.\n",
+    );
+    let out = stdout(&requimd(&dir, &["check"]));
+    assert!(
+        out.starts_with("fr.md:2:7: warning: UC-001.s1 changed"),
+        "{out}"
+    );
+    assert!(out.trim_end().ends_with("[suspect-link]"), "{out}");
+    // A check never changes an existing hash.
+    assert_eq!(fs::read_to_string(dir.join("requimd.lock")).unwrap(), lock);
+}
+
+#[test]
+fn fr_300_locked_writes_nothing_and_fails_if_out_of_date() {
+    let dir = temp_dir("locked");
+    write(&dir, "requimd.toml", "");
+    write(&dir, "uc.md", UC);
+    write(&dir, "fr.md", FR);
+    let o = requimd(&dir, &["check", "--locked"]);
+    assert_eq!(o.status.code(), Some(1));
+    assert!(String::from_utf8_lossy(&o.stderr).contains("requimd.lock is out of date"));
+    assert!(!dir.join("requimd.lock").exists());
+    assert_eq!(requimd(&dir, &["check"]).status.code(), Some(0));
+    assert_eq!(requimd(&dir, &["check", "--locked"]).status.code(), Some(0));
+}
+
+#[test]
+fn fr_300_conflicted_lock_stops_check_unchanged() {
+    let dir = temp_dir("conflict");
+    write(&dir, "requimd.toml", "");
+    write(&dir, "fr.md", FR);
+    let conflicted =
+        "[links]\n<<<<<<< HEAD\n\"FR-001 impl UC-001.s1\" = \"1\"\n=======\n>>>>>>> b\n";
+    write(&dir, "requimd.lock", conflicted);
+    let o = requimd(&dir, &["check"]);
+    assert_eq!(o.status.code(), Some(2));
+    assert!(String::from_utf8_lossy(&o.stderr).contains("merge conflicts"));
+    assert_eq!(
+        fs::read_to_string(dir.join("requimd.lock")).unwrap(),
+        conflicted
+    );
+}
+
+#[test]
+fn fr_307_review_item_step_and_all() {
+    let dir = temp_dir("review");
+    write(&dir, "requimd.toml", "");
+    write(
+        &dir,
+        "uc.md",
+        "## UC-001 Pay\n\n- s1: Customer pays.\n- s2: Receipt.\n",
+    );
+    write(
+        &dir,
+        "fr.md",
+        "## FR-001 Charge\nimpl: UC-001.s1\n\nThe system shall charge.\n\n## FR-002 Print\nimpl: UC-001.s2\n\nThe system shall print.\n",
+    );
+    requimd(&dir, &["check"]);
+    write(
+        &dir,
+        "uc.md",
+        "## UC-001 Pay\n\n- s1: Customer pays now.\n- s2: Receipt now.\n",
+    );
+    assert_eq!(stdout(&requimd(&dir, &["check"])).lines().count(), 2);
+
+    let o = requimd(&dir, &["review", "UC-001.s1"]);
+    assert_eq!(stdout(&o), "reviewed FR-001 impl UC-001.s1\n");
+    assert_eq!(stdout(&requimd(&dir, &["check"])).lines().count(), 1);
+    assert_eq!(
+        stdout(&requimd(&dir, &["review", "FR-001"])),
+        "no suspect links\n"
+    );
+    assert_eq!(
+        stdout(&requimd(&dir, &["review", "--all"])),
+        "reviewed FR-002 impl UC-001.s2\n"
+    );
+    assert_eq!(stdout(&requimd(&dir, &["check"])), "");
+
+    assert_eq!(requimd(&dir, &["review", "FR-999"]).status.code(), Some(1));
+    assert_eq!(
+        requimd(&dir, &["review", "nonsense"]).status.code(),
+        Some(2)
+    );
+    assert_eq!(requimd(&dir, &["review"]).status.code(), Some(2));
+}
+
+#[test]
+fn fr_212_fmt_does_not_reuse_ids_of_deleted_items() {
+    let dir = temp_dir("noreuse");
+    write(&dir, "requimd.toml", "");
+    write(
+        &dir,
+        "fr.md",
+        "## FR-001 A\n\nIt shall.\n\n## FR-002 B\n\nIt shall.\n",
+    );
+    requimd(&dir, &["check"]);
+    // FR-002 is deleted; a new placeholder must not get FR-002 again.
+    write(
+        &dir,
+        "fr.md",
+        "## FR-001 A\n\nIt shall.\n\n## FR-? C\n\nIt shall.\n",
+    );
+    requimd(&dir, &["fmt"]);
+    assert!(
+        fs::read_to_string(dir.join("fr.md"))
+            .unwrap()
+            .contains("## FR-003 C")
+    );
+}
+
 #[test]
 fn fr_306_coverage_per_use_case() {
     let out = stdout(&requimd(&examples("broken"), &["coverage"]));

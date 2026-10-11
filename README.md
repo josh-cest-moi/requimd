@@ -4,9 +4,9 @@ Requirements as code: requirements live as Markdown files in a git repository.
 A CLI checks them, and a language server helps you write them in any LSP
 editor (primary target: Neovim 0.12).
 
-> Spoken "requi-m-d" (ADR-0006). Status: milestones M1 to M3 done in Rust (check
-> command, language server, authoring comfort); M4 (impact analysis) is
-> next. See `docs/status.md`.
+> Spoken "requi-m-d" (ADR-0006). Status: milestones M1 to M4 done in Rust
+> (check command, language server, authoring comfort, impact analysis); M5
+> (publishing) is next. See `docs/status.md`.
 
 ## Why
 
@@ -36,10 +36,11 @@ The binary `target/release/requimd` provides:
 | Command | Purpose |
 |---------|---------|
 | `requimd init` | Create `requimd.toml` and an empty glossary |
-| `requimd check [paths] [--format json] [--strict]` | Check the project; exit code 1 on errors |
+| `requimd check [paths] [--format json] [--strict] [--locked]` | Check the project and update `requimd.lock`; exit code 1 on errors |
 | `requimd fmt [--check]` | Assign IDs to placeholders, normalise metadata |
 | `requimd show <ID>` | Show an item or step with its references |
 | `requimd coverage` | Coverage of use case steps |
+| `requimd review <ID> \| --all` | Mark suspect links as reviewed |
 | `requimd lsp` | Language server on stdio |
 
 Editor setup: `docs/neovim.md`.
@@ -57,7 +58,7 @@ Editor setup: `docs/neovim.md`.
 | `docs/neovim.md` | Editor setup |
 | `examples/shop/` | Small valid sample project, used as test fixture |
 | `examples/broken/` | Sample with intentional errors and expected diagnostics |
-| `requimd.toml` | Makes this repository itself a requimd project |
+| `requimd.toml`, `requimd.lock` | Make this repository itself a requimd project; the lock file records reviewed links (ADR-0007) |
 | `CLAUDE.md` | Context and working rules for Claude Code sessions |
 
 ## Where to start

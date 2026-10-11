@@ -65,7 +65,8 @@ nvim --headless --clean -l scripts/nvim-check.lua target/release/requimd
 | Rename | FR-214 | `grn` on an item ID | M3 |
 | Code lens | FR-215 | `:lua vim.lsp.codelens.run()` on a step | M3 |
 | Language check actions | FR-219 | `gra` on a weak word, modal verb or alias, or on any word | M3 |
-| Mark reviewed | FR-218 | `gra` | M4 |
+| Suspect links | FR-116 | diagnostics; links are recorded in `requimd.lock` on save (FR-218) | M4 |
+| Mark as reviewed | FR-218 | `gra` on a suspect link | M4 |
 
 Completion in body text finds items by ID or by a word of the title: type
 `VAT` and press `<C-x><C-o>` to get `FR-104`.

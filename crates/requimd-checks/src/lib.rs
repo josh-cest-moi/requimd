@@ -9,6 +9,7 @@ use std::ops::Range;
 mod language;
 
 use requimd_core::config::{IMPL, REF, STEP, USECASE};
+use requimd_core::lock::{link_key, target_hash};
 use requimd_core::{Diagnostic, FileId, Item, Level, Project, Reference, Resolution, Severity};
 
 /// Runs all checks and returns the diagnostics sorted by file and position.
@@ -25,6 +26,7 @@ pub fn check(project: &Project) -> Vec<Diagnostic> {
     ref_cycle(&mut out);
     status_link(&mut out);
     placeholder(&mut out);
+    suspect_links(&mut out);
     language::run(&mut out);
     let mut diags = out.diags;
     diags.sort_by(|a, b| {
@@ -461,6 +463,38 @@ fn status_link(out: &mut Out) {
                     link.reference.span.clone(),
                     format!(
                         "approved item links to {}, which has status {s}",
+                        link.reference.text
+                    ),
+                );
+            }
+        }
+    }
+}
+
+/// FR-116: a link whose target changed since its last review. Links
+/// without a lock entry are not suspect; a check records them (ADR-0007).
+fn suspect_links(out: &mut Out) {
+    let p = out.project;
+    for item in &p.items {
+        let Some(id) = &item.id else { continue };
+        for link in &item.links {
+            let key = link_key(id, &link.key, &link.reference.text);
+            let Some(reviewed) = p.lock.links.get(&key) else {
+                continue;
+            };
+            let current = link
+                .reference
+                .target
+                .as_ref()
+                .and_then(|t| target_hash(p, t));
+            if current.is_some_and(|c| &c != reviewed) {
+                out.push(
+                    "suspect-link",
+                    Severity::Warning,
+                    item.file,
+                    link.reference.span.clone(),
+                    format!(
+                        "{} changed since this link was last reviewed; check {id} and mark the link as reviewed",
                         link.reference.text
                     ),
                 );

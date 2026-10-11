@@ -9,6 +9,7 @@ use std::process::ExitCode;
 
 use clap::{Parser, Subcommand, ValueEnum};
 use requimd_core::config::{CONFIG_FILE, INIT_TEMPLATE};
+use requimd_core::lock::{LOCK_FILE, Lock};
 use requimd_core::{Config, Diagnostic, Project, Severity, find_root};
 use serde::Serialize;
 
@@ -31,6 +32,9 @@ enum Command {
         /// Treat warnings as errors for the exit code.
         #[arg(long)]
         strict: bool,
+        /// Do not write requimd.lock; fail if it is out of date (for CI).
+        #[arg(long)]
+        locked: bool,
     },
     /// Create requimd.toml and an empty glossary in the current directory.
     Init,
@@ -47,6 +51,15 @@ enum Command {
     },
     /// Print the coverage of use case steps by `impl` links.
     Coverage,
+    /// Mark suspect links from or to an item as reviewed.
+    Review {
+        /// Item ID or step reference.
+        #[arg(required_unless_present = "all", conflicts_with = "all")]
+        id: Option<String>,
+        /// Mark every suspect link of the project as reviewed.
+        #[arg(long)]
+        all: bool,
+    },
     /// Start the language server on stdin and stdout.
     Lsp,
 }
@@ -69,7 +82,8 @@ fn main() -> ExitCode {
             paths,
             format,
             strict,
-        } => check(&paths, format, strict),
+            locked,
+        } => check(&paths, format, strict, locked),
         Command::Init => init(),
         // FR-304
         Command::Fmt { check } => with_project(|p, cwd| match commands::fmt(p, check, cwd) {
@@ -95,6 +109,19 @@ fn main() -> ExitCode {
             print!("{}", commands::coverage(p));
             OK
         }),
+        // FR-307
+        Command::Review { id, all } => {
+            with_project(|p, _| match commands::review(p, id.as_deref(), all) {
+                Ok(out) => {
+                    print!("{out}");
+                    OK
+                }
+                Err((code, msg)) => {
+                    eprintln!("requimd: {msg}");
+                    code
+                }
+            })
+        }
         // FR-308
         Command::Lsp => match requimd_lsp::run_stdio() {
             Ok(()) => OK,
@@ -127,7 +154,7 @@ fn with_project(f: impl FnOnce(&Project, &Path) -> u8) -> u8 {
 }
 
 /// FR-300 to FR-302.
-fn check(paths: &[PathBuf], format: Format, strict: bool) -> u8 {
+fn check(paths: &[PathBuf], format: Format, strict: bool, locked: bool) -> u8 {
     let cwd = match std::env::current_dir() {
         Ok(d) => d,
         Err(e) => return fail(&format!("current directory: {e}")),
@@ -186,10 +213,25 @@ fn check(paths: &[PathBuf], format: Format, strict: bool) -> u8 {
         }
     }
 
+    // FR-116, FR-300: record new links and IDs, or with --locked verify.
+    let updated = project.lock.updated(&project);
+    let lock_path = project.root.join(LOCK_FILE);
+    let mut stale = false;
+    if updated != project.lock || (!lock_path.exists() && updated != Lock::default()) {
+        if locked {
+            eprintln!(
+                "requimd: {LOCK_FILE} is out of date; run `requimd check` and commit {LOCK_FILE}"
+            );
+            stale = true;
+        } else if let Err(e) = std::fs::write(&lock_path, updated.to_toml()) {
+            return fail(&format!("{}: {e}", lock_path.display()));
+        }
+    }
+
     let failing = diags
         .iter()
         .any(|d| d.severity == Severity::Error || (strict && d.severity == Severity::Warning));
-    if failing { FOUND } else { OK }
+    if failing || stale { FOUND } else { OK }
 }
 
 #[derive(Serialize)]

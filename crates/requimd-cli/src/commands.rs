@@ -6,6 +6,7 @@ use std::path::Path;
 
 use requimd_core::config::{IMPL, USECASE};
 use requimd_core::fmt::{Edit, apply, format_edits};
+use requimd_core::lock::LOCK_FILE;
 use requimd_core::parse::parse_target;
 use requimd_core::{Item, Project, Reference, Resolution};
 
@@ -199,6 +200,44 @@ pub fn show(p: &Project, id: &str, cwd: &Path) -> Result<String, (u8, String)> {
     }
     if !any {
         let _ = writeln!(out, "  (none)");
+    }
+    Ok(out)
+}
+
+/// FR-307: marks suspect links from or to `id` (or all with `all`) as
+/// reviewed and writes the lock file. Errors carry the exit code.
+pub fn review(p: &Project, id: Option<&str>, all: bool) -> Result<String, (u8, String)> {
+    // New links are recorded first, as by a check (FR-116).
+    let mut lock = p.lock.updated(p);
+    let marked = if all {
+        lock.review(p, |_, _| true)
+    } else {
+        let id = id.unwrap_or_default();
+        let target = parse_target(&p.config, id)
+            .ok_or_else(|| (2, format!("\"{id}\" is not an item ID or step reference")))?;
+        if p.declarations(&target.id).is_empty() {
+            return Err((1, format!("{} not found", target.id)));
+        }
+        match &target.step {
+            None => lock.review(p, |source, t| {
+                source.id.as_deref() == Some(target.id.as_str()) || t.id == target.id
+            }),
+            Some(step) => lock.review(p, |_, t| {
+                t.id == target.id && t.step.as_deref() == Some(step.as_str())
+            }),
+        }
+    };
+    let path = p.root.join(LOCK_FILE);
+    if lock != p.lock || !path.exists() {
+        std::fs::write(&path, lock.to_toml())
+            .map_err(|e| (2, format!("{}: {e}", path.display())))?;
+    }
+    let mut out = String::new();
+    if marked.is_empty() {
+        out.push_str("no suspect links\n");
+    }
+    for key in marked {
+        let _ = writeln!(out, "reviewed {key}");
     }
     Ok(out)
 }

@@ -6,6 +6,7 @@
 pub mod config;
 pub mod diag;
 pub mod fmt;
+pub mod lock;
 pub mod model;
 pub mod parse;
 pub mod project;
