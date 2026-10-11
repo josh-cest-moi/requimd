@@ -305,14 +305,14 @@ checksum = "d6f6ff9a378485b298a5286656da665ba74413d36db0979633275d2e708145d4"
 
 [[package]]
 name = "requimd-checks"
-version = "0.1.0"
+version = "0.1.0-alpha.1"
 dependencies = [
  "requimd-core",
 ]
 
 [[package]]
 name = "requimd-cli"
-version = "0.1.0"
+version = "0.1.0-alpha.1"
 dependencies = [
  "clap",
  "pulldown-cmark",
@@ -325,7 +325,7 @@ dependencies = [
 
 [[package]]
 name = "requimd-core"
-version = "0.1.0"
+version = "0.1.0-alpha.1"
 dependencies = [
  "globset",
  "pulldown-cmark",
@@ -336,7 +336,7 @@ dependencies = [
 
 [[package]]
 name = "requimd-lsp"
-version = "0.1.0"
+version = "0.1.0-alpha.1"
 dependencies = [
  "crossbeam-channel",
  "lsp-server",

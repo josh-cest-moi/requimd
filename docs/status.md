@@ -61,6 +61,7 @@ As of 2026-10-12. Update this file at the end of every working session.
 | 2026-10-12 | Traceability matrix: one row per step with implementing and verifying items | FR-401 |
 | 2026-10-12 | License MIT for now; adding Apache-2.0 later stays possible while there is one author | `LICENSE`, `docs/roadmap.md` |
 | 2026-10-12 | Releases as binaries on GitHub Releases | `docs/roadmap.md` |
+| 2026-10-12 | Alpha pre-releases (`v0.1.0-alpha.N`) for review rounds before v0.1.0; tags with a suffix become GitHub pre-releases; manual workflow runs build without publishing | `.github/workflows/release.yml` |
 | 2026-10-12 | CI builds the site as artifact; GitHub Pages later | `docs/roadmap.md` |
 | 2026-10-12 | FR-403 and FR-404 after M5 | `docs/roadmap.md` |
 | 2026-10-12 | The language server rewrites lock entries of a rename only once the documents show it, so a cancelled rename changes nothing | FR-214, `crates/requimd-lsp/src/server.rs` |
@@ -163,8 +164,11 @@ As of 2026-10-12. Update this file at the end of every working session.
 
 1. Owner: try M3 and M4 in Neovim (`docs/neovim.md`) and review the open
    interpretations above (business questions 5 to 7).
-2. First release: push tag `v0.1.0` (matches `Cargo.toml`); check the
-   release job and the four archives.
+2. Alpha release `v0.1.0-alpha.1` (version in `Cargo.toml`): push the
+   tag, check the release job and the four archives, then review and test
+   the tool on a real project. Further rounds: bump to `-alpha.2` etc.;
+   `v0.1.0` when the reviews are done. Test builds without publishing:
+   Actions → Release → Run workflow.
 3. After M5: FR-403 (`requimd diff`) and FR-404 (Mermaid export), in
    separate commits. Later: publish the site on GitHub Pages.
 

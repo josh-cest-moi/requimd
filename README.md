@@ -30,7 +30,9 @@ based on the delivery country (see BR-003).
 Download the archive for your system from the
 [releases](https://github.com/josh-cest-moi/requimd/releases), unpack it and
 put the single file `requimd` (`requimd.exe` on Windows) on your `PATH`.
-Nothing else is needed. Or build from source:
+Nothing else is needed. Releases with a suffix such as `-alpha.1` are
+pre-releases for testing: behaviour and file formats may still change. Or
+build from source:
 
 ```bash
 cargo build --release
