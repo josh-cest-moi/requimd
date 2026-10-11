@@ -2,7 +2,7 @@
 //! file paths to URIs and back.
 
 use std::ops::Range;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
 use lsp_types::{Position, Uri};
@@ -116,6 +116,36 @@ pub fn uri_to_path(uri: &Uri) -> Option<PathBuf> {
     }
 }
 
+/// The real spelling of a path, so that paths from different sources
+/// compare equal: Windows 8.3 short names such as `RUNNER~1` are expanded
+/// and symbolic links resolved. A path that does not exist (a deleted file)
+/// is resolved through its directory.
+pub fn real_path(path: &Path) -> PathBuf {
+    if let Ok(p) = std::fs::canonicalize(path) {
+        return strip_verbatim(p);
+    }
+    if let (Some(dir), Some(name)) = (path.parent(), path.file_name())
+        && let Ok(d) = std::fs::canonicalize(dir)
+    {
+        return strip_verbatim(d).join(name);
+    }
+    path.to_path_buf()
+}
+
+/// `\\?\C:\x` → `C:\x`, `\\?\UNC\server\share` → `\\server\share`.
+fn strip_verbatim(p: PathBuf) -> PathBuf {
+    let s = p.to_string_lossy();
+    if let Some(rest) = s.strip_prefix(r"\\?\UNC\") {
+        return PathBuf::from(format!(r"\\{rest}"));
+    }
+    if let Some(rest) = s.strip_prefix(r"\\?\")
+        && rest.get(1..2) == Some(":")
+    {
+        return PathBuf::from(rest);
+    }
+    p
+}
+
 /// `file:` URI of an absolute path.
 pub fn path_to_uri(path: &std::path::Path) -> Option<Uri> {
     let s = path.to_string_lossy().replace('\\', "/");
@@ -177,6 +207,29 @@ mod tests {
         // Beyond the line end: clamped before "\r\n".
         assert_eq!(u16.offset(Position::new(1, 99)), t.find('\r').unwrap());
         assert_eq!(u16.offset(Position::new(99, 0)), t.len());
+    }
+
+    #[test]
+    fn fr_217_real_path_expands_short_names_and_keeps_missing_files() {
+        let dir = std::env::temp_dir().join("requimd-long-directory-name-test");
+        std::fs::create_dir_all(&dir).unwrap();
+        let real = real_path(&dir);
+        assert!(!real.to_string_lossy().starts_with(r"\\?\"));
+        // A file that does not exist keeps its name below the real directory.
+        assert_eq!(real_path(&dir.join("gone.md")), real.join("gone.md"));
+        if cfg!(windows) {
+            // The 8.3 short form, if the volume has short names.
+            let out = std::process::Command::new("cmd")
+                .args(["/c", "for %I in (.) do @echo %~sI"])
+                .current_dir(&dir)
+                .output()
+                .unwrap();
+            let short = PathBuf::from(String::from_utf8_lossy(&out.stdout).trim());
+            if short != dir {
+                assert_eq!(real_path(&short), real);
+                assert_eq!(real_path(&short.join("gone.md")), real.join("gone.md"));
+            }
+        }
     }
 
     #[test]

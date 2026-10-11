@@ -296,6 +296,15 @@ fn fr_217_external_changes_reported_by_client() {
         checks(&c.diagnostics(&uri(&uc_path), SECOND).unwrap()),
         ["uncovered-step"]
     );
+    // A garbled event, as Neovim sends on Windows below 8.3 short paths:
+    // wrong path and "deleted" for a new file. The server rescans the disk.
+    fs::write(&fr, "## FR-001 F\nimpl: UC-001.s1\n").unwrap();
+    let garbled = dir.join("LONGDI~1").join("garbled-tail").join("fr.md");
+    c.notify(
+        "workspace/didChangeWatchedFiles",
+        json!({ "changes": [{ "uri": uri(&garbled), "type": 3 }] }),
+    );
+    assert!(c.diagnostics(&uri(&uc_path), SECOND).unwrap().is_empty());
     c.shutdown();
 }
 

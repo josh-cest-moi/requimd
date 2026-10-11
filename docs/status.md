@@ -7,14 +7,20 @@ As of 2026-10-12. Update this file at the end of every working session.
 - **M0 Specification: done.** Spec in `requirements/` (7 use cases, 5
   business rules, 69 functional and 10 quality requirements, all `draft`),
   fixtures in `examples/`, decisions in `docs/decisions/`.
-- **M1 Parser and check command: implemented, CI not yet run.** Cargo
+- **CI:** first runs on GitHub (2026-10-11) green on Linux and macOS, so
+  NFR-004 `must` is met and M1 to M3 are done. Windows failed in one step:
+  FR-217 with Neovim's file watcher, because Neovim on Windows reports
+  garbled paths for projects below an 8.3 short path (the runner's
+  `C:\Users\RUNNER~1`). Fixed in the server on 2026-10-12 (rescan on events
+  that do not fit the disk); waiting for a green Windows run, after which
+  Windows can become a required job (NFR-004 `plan`).
+- **M1 Parser and check command: done.** Cargo
   workspace with `crates/requimd-core` (config, parser, item model),
   `crates/requimd-checks` and `crates/requimd-cli` (binary `requimd`). All `must`
   items of M1 have tests named after their IDs (80 tests, NFR-010 checked by
   a test). `requimd check` passes on this repository and `examples/shop`;
-  `examples/broken` yields exactly the M1 rows of `EXPECTED.md`. Open for
-  M1: NFR-004 needs a green CI run on GitHub (repository not pushed yet).
-- **M2 Language server core: implemented, CI not yet run.** New crate
+  `examples/broken` yields exactly the M1 rows of `EXPECTED.md`.
+- **M2 Language server core: done.** New crate
   `crates/requimd-lsp` (lsp-server, synchronous loop, full text sync, UTF-8
   or UTF-16 positions as the client offers), started by `requimd lsp`. All
   `must` items of M2 have tests; end-to-end tests run over an in-memory
@@ -22,7 +28,7 @@ As of 2026-10-12. Update this file at the end of every working session.
   (10,000 random edits). NFR-007 is checked against Neovim 0.12.6 without
   plugins by `scripts/nvim-check.lua`, which `cargo test` runs when `nvim`
   is installed; all features pass (see `docs/neovim.md`).
-- **M3 Authoring comfort: implemented, CI not yet run.** Glossary (FR-011),
+- **M3 Authoring comfort: done.** Glossary (FR-011),
   language checks FR-110, FR-111, FR-113, FR-114, FR-118, FR-119 (core
   module `words.rs`, checks module `language.rs`), language server features
   FR-205 glossary hover, FR-209, FR-213 to FR-215, FR-219 (`actions.rs`,
@@ -37,6 +43,7 @@ As of 2026-10-12. Update this file at the end of every working session.
 
 | Date | Decision | Where recorded |
 |------|----------|----------------|
+| 2026-10-12 | Language server resolves paths to their real spelling and rescans the disk on file events that do not fit it (Neovim on Windows, 8.3 short paths) | FR-217, `crates/requimd-lsp/src/server.rs` |
 | 2026-10-12 | Project name requimd (formerly reqmd), spoken "requi-m-d"; binary, config, lock file, marker and crates renamed | ADR-0006 |
 | 2026-10-12 | Configured `words` extend the built-in lists; `allow` switches words off | FR-110, FR-118 |
 | 2026-10-12 | Built-in weak-word list: the 15 required words plus simple, efficient, sufficient, normally, usually, each with a reason | `crates/requimd-core/src/config.rs` |
@@ -128,8 +135,8 @@ As of 2026-10-12. Update this file at the end of every working session.
 
 ## Next steps
 
-1. Push this repository to GitHub and check the CI run (NFR-004, and
-   NFR-007 on Linux and macOS).
+1. Push the Windows fix and check that the Windows job is green; then
+   remove `continue-on-error` for Windows in `.github/workflows/ci.yml`.
 2. Owner: try the M3 features in Neovim (`docs/neovim.md`, including the
    optional code lens handler) and review the interpretations above.
 3. ADR for the lock file format (technical question 1), then M4: suspect

@@ -4,7 +4,7 @@ Requirements as code: requirements live as Markdown files in a git repository.
 A CLI checks them, and a language server helps you write them in any LSP
 editor (primary target: Neovim 0.12).
 
-> Spoken "requi-m-d" (ADR-0006). Status: milestones M1 to M3 implemented in Rust (check
+> Spoken "requi-m-d" (ADR-0006). Status: milestones M1 to M3 done in Rust (check
 > command, language server, authoring comfort); M4 (impact analysis) is
 > next. See `docs/status.md`.
 

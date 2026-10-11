@@ -9,7 +9,7 @@ all its `must` items are implemented, each has a test containing its ID
 Spec in `requirements/`, decisions in `docs/decisions/`. Rust chosen
 (ADR-0001). Current state and open questions: `docs/status.md`.
 
-## M1 Parser and check command (implemented; NFR-004 awaits the first CI run)
+## M1 Parser and check command (done)
 
 Goal: `requimd check` validates this repository and the examples in CI.
 
@@ -21,7 +21,7 @@ Goal: `requimd check` validates this repository and the examples in CI.
 - Quality: NFR-002, NFR-004, NFR-006, NFR-008; NFR-010 applies to every milestone
 - Rules: BR-001, BR-003, BR-005
 
-## M2 Language server core (implemented)
+## M2 Language server core (done)
 
 Goal: writing and navigating in Neovim 0.12 without plugins.
 
@@ -29,7 +29,7 @@ Goal: writing and navigating in Neovim 0.12 without plugins.
 - Quality: NFR-001, NFR-003, NFR-007, NFR-009
 - Editor guide in `docs/neovim.md` verified feature by feature
 
-## M3 Authoring comfort (implemented)
+## M3 Authoring comfort (done)
 
 - Format: FR-011 (glossary)
 - Checks: FR-110, FR-111, FR-113, FR-114, FR-118, FR-119

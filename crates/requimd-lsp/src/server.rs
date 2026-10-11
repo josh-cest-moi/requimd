@@ -35,7 +35,7 @@ use requimd_core::{
 use serde_json::Value;
 
 use crate::actions;
-use crate::convert::{Encoding, LineIndex, path_to_uri, uri_to_path};
+use crate::convert::{Encoding, LineIndex, path_to_uri, real_path, uri_to_path};
 use crate::features::{self, Ctx};
 
 /// Wait after the last change before diagnostics are published.
@@ -185,7 +185,8 @@ impl<'a> Server<'a> {
     }
 
     fn set_root(&mut self, root: PathBuf) {
-        self.root = Some(root);
+        // FR-217: one spelling for all paths, e.g. no Windows 8.3 names.
+        self.root = Some(real_path(&root));
         self.load_config();
         if self.client_watches {
             self.register_watchers();
@@ -457,7 +458,7 @@ impl<'a> Server<'a> {
 
     /// Relative path of an included document (FR-201).
     fn rel_of(&mut self, uri: &Uri) -> Option<String> {
-        let path = std::path::absolute(uri_to_path(uri)?).ok()?;
+        let path = real_path(&std::path::absolute(uri_to_path(uri)?).ok()?);
         if self.root.is_none()
             && let Some(root) = find_root(&path)
         {
@@ -538,14 +539,18 @@ impl<'a> Server<'a> {
         }
     }
 
-    /// FR-217 with client support.
+    /// FR-217 with client support. An event that does not fit the files on
+    /// disk leads to a rescan: Neovim on Windows reports garbled paths for
+    /// projects below an 8.3 short path such as `C:\Users\RUNNER~1`.
     fn watched_files_changed(&mut self, p: DidChangeWatchedFilesParams) {
         let Some(root) = self.root.clone() else {
             return;
         };
         let mut config_changed = false;
+        let mut rescan = false;
         for change in p.changes {
-            let Some(path) = uri_to_path(&change.uri) else {
+            let Some(path) = uri_to_path(&change.uri).map(|p| real_path(&p)) else {
+                rescan = true;
                 continue;
             };
             if path == root.join(CONFIG_FILE) {
@@ -553,12 +558,24 @@ impl<'a> Server<'a> {
                 continue;
             }
             let Some(rel) = relative_path(&root, &path) else {
+                rescan = true;
                 continue;
             };
             if !self.is_included(&rel) {
                 continue;
             }
-            if change.typ == FileChangeType::DELETED {
+            let deleted = change.typ == FileChangeType::DELETED;
+            let fits = if deleted {
+                !path.is_file() && self.disk.contains_key(&rel)
+            } else {
+                path.is_file()
+            };
+            if !fits {
+                // The event does not match the file system.
+                rescan = true;
+                continue;
+            }
+            if deleted {
                 self.disk.remove(&rel);
             } else if let Ok(text) = read_text(&path) {
                 let modified = modified(&path);
@@ -575,6 +592,8 @@ impl<'a> Server<'a> {
         }
         if config_changed {
             self.load_config();
+        } else if rescan && self.rescan() {
+            self.mark_dirty();
         }
     }
 
