@@ -47,7 +47,7 @@ Goal: writing and navigating in Neovim 0.12 without plugins.
 - FR-400 to FR-402; FR-405 deprecated (no Confluence; PDFs come from an
   external Markdown-to-PDF converter)
 - NFR-005 and release packaging: binaries on GitHub Releases for Linux,
-  macOS and Windows; license MIT OR Apache-2.0
+  macOS and Windows; license MIT
 - CI builds the site of this repository as a downloadable artifact;
   publishing to GitHub Pages later
 

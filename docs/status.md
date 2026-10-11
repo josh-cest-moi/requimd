@@ -46,12 +46,11 @@ As of 2026-10-12. Update this file at the end of every working session.
 - **M5 Publishing: implemented.** `requimd export site | matrix | json`
   (FR-400 to FR-402, CLI module `export/`): one self-contained HTML page per
   source file (CSS embedded, no JavaScript), index, traceability matrix as
-  page and CSV, JSON with format version. FR-405 deprecated. License MIT OR
-  Apache-2.0. `.github/workflows/release.yml` builds static binaries for
+  page and CSV, JSON with format version. FR-405 deprecated. License MIT
+  (`LICENSE`). `.github/workflows/release.yml` builds static binaries for
   Linux (musl), macOS (arm64, x86_64) and Windows (static CRT) on a version
   tag and attaches them to a GitHub release (NFR-005). CI uploads this
-  repository's site as artifact `requimd-site`. Open: `LICENSE-APACHE`
-  (official text still to be added), first release tag.
+  repository's site as artifact `requimd-site`. Open: first release tag.
 
 ## Decision log
 
@@ -60,7 +59,8 @@ As of 2026-10-12. Update this file at the end of every working session.
 | 2026-10-12 | No Confluence: FR-405 deprecated; stakeholders get PDFs from an external Markdown-to-PDF converter | FR-405 |
 | 2026-10-12 | Site shows all items with status badge, `--status` filters; no JavaScript | FR-400 |
 | 2026-10-12 | Traceability matrix: one row per step with implementing and verifying items | FR-401 |
-| 2026-10-12 | License MIT OR Apache-2.0; releases as binaries on GitHub Releases | `docs/roadmap.md` |
+| 2026-10-12 | License MIT for now; adding Apache-2.0 later stays possible while there is one author | `LICENSE`, `docs/roadmap.md` |
+| 2026-10-12 | Releases as binaries on GitHub Releases | `docs/roadmap.md` |
 | 2026-10-12 | CI builds the site as artifact; GitHub Pages later | `docs/roadmap.md` |
 | 2026-10-12 | FR-403 and FR-404 after M5 | `docs/roadmap.md` |
 | 2026-10-12 | The language server rewrites lock entries of a rename only once the documents show it, so a cancelled rename changes nothing | FR-214, `crates/requimd-lsp/src/server.rs` |
@@ -163,11 +163,9 @@ As of 2026-10-12. Update this file at the end of every working session.
 
 1. Owner: try M3 and M4 in Neovim (`docs/neovim.md`) and review the open
    interpretations above (business questions 5 to 7).
-2. Add `LICENSE-APACHE` with the official Apache-2.0 text; the release
-   workflow packages it.
-3. First release: push tag `v0.1.0` (matches `Cargo.toml`); check the
+2. First release: push tag `v0.1.0` (matches `Cargo.toml`); check the
    release job and the four archives.
-4. After M5: FR-403 (`requimd diff`) and FR-404 (Mermaid export), in
+3. After M5: FR-403 (`requimd diff`) and FR-404 (Mermaid export), in
    separate commits. Later: publish the site on GitHub Pages.
 
 ## Related documents outside the repo
