@@ -55,40 +55,14 @@ impl Project {
             path: root.to_path_buf(),
             message: e.to_string(),
         })?;
-        let globs = include_set(&config.include).map_err(|message| LoadError {
+        let includes = Includes::new(&config.include).map_err(|message| LoadError {
             path: root.clone(),
             message,
         })?;
         let mut files = Vec::new();
-        let walker = walkdir::WalkDir::new(&root)
-            .sort_by_file_name()
-            .into_iter()
-            .filter_entry(|e| e.file_name() != ".git");
-        for entry in walker {
-            let entry = entry.map_err(|e| LoadError {
-                path: e.path().map_or_else(|| root.clone(), Path::to_path_buf),
-                message: e.to_string(),
-            })?;
-            if !entry.file_type().is_file() {
-                continue;
-            }
-            let Ok(rel) = entry.path().strip_prefix(&root) else {
-                continue;
-            };
-            let rel: Vec<String> = rel
-                .components()
-                .map(|c| c.as_os_str().to_string_lossy().into_owned())
-                .collect();
-            let rel = rel.join("/");
-            if !globs.is_match(&rel) {
-                continue;
-            }
-            let bytes = std::fs::read(entry.path()).map_err(|e| LoadError {
-                path: entry.path().to_path_buf(),
-                message: e.to_string(),
-            })?;
-            let text = String::from_utf8_lossy(&bytes).into_owned();
-            files.push(SourceFile::new(entry.path().to_path_buf(), rel, text));
+        for (rel, path) in scan_files(&root, &includes)? {
+            let text = read_text(&path)?;
+            files.push(SourceFile::new(path, rel, text));
         }
         Ok(Project::from_files(root, config, files))
     }
@@ -133,18 +107,97 @@ impl Project {
             .and_then(|it| it.steps.iter().position(|s| &s.label == label))
             .map_or(Resolution::MissingStep(item), |s| Resolution::Step(item, s))
     }
+
+    /// FR-212: one higher than the highest ID of `prefix` in the project,
+    /// zero-padded to the configured digits. IDs in the lock file are added
+    /// in M4 (BR-002).
+    pub fn next_id(&self, prefix: &str) -> String {
+        let highest = self
+            .ids
+            .keys()
+            .filter_map(|id| {
+                id.strip_prefix(prefix)?
+                    .strip_prefix('-')?
+                    .parse::<u64>()
+                    .ok()
+            })
+            .max()
+            .unwrap_or(0);
+        format!(
+            "{prefix}-{:0width$}",
+            highest.saturating_add(1),
+            width = self.config.digits
+        )
+    }
 }
 
-fn include_set(patterns: &[String]) -> Result<GlobSet, String> {
-    let mut b = GlobSetBuilder::new();
-    for p in patterns {
-        let glob = GlobBuilder::new(p)
-            .literal_separator(true)
-            .build()
-            .map_err(|e| format!("include pattern \"{p}\": {e}"))?;
-        b.add(glob);
+/// Include patterns of the project (FR-013, FR-201).
+#[derive(Debug, Clone)]
+pub struct Includes(GlobSet);
+
+impl Includes {
+    pub fn new(patterns: &[String]) -> Result<Includes, String> {
+        let mut b = GlobSetBuilder::new();
+        for p in patterns {
+            let glob = GlobBuilder::new(p)
+                .literal_separator(true)
+                .build()
+                .map_err(|e| format!("include pattern \"{p}\": {e}"))?;
+            b.add(glob);
+        }
+        b.build().map(Includes).map_err(|e| e.to_string())
     }
-    b.build().map_err(|e| e.to_string())
+
+    /// Whether a path relative to the root, with `/` separators, matches.
+    pub fn matches(&self, rel: &str) -> bool {
+        self.0.is_match(rel)
+    }
+}
+
+/// Path relative to `root` with `/` separators, if `path` is below it.
+pub fn relative_path(root: &Path, path: &Path) -> Option<String> {
+    let rel = path.strip_prefix(root).ok()?;
+    let parts: Vec<String> = rel
+        .components()
+        .map(|c| c.as_os_str().to_string_lossy().into_owned())
+        .collect();
+    Some(parts.join("/"))
+}
+
+/// Included files below `root`, sorted, as relative and absolute path.
+pub fn scan_files(root: &Path, includes: &Includes) -> Result<Vec<(String, PathBuf)>, LoadError> {
+    let mut files = Vec::new();
+    let walker = walkdir::WalkDir::new(root)
+        .sort_by_file_name()
+        .into_iter()
+        .filter_entry(|e| e.file_name() != ".git");
+    for entry in walker {
+        let entry = entry.map_err(|e| LoadError {
+            path: e
+                .path()
+                .map_or_else(|| root.to_path_buf(), Path::to_path_buf),
+            message: e.to_string(),
+        })?;
+        if !entry.file_type().is_file() {
+            continue;
+        }
+        let Some(rel) = relative_path(root, entry.path()) else {
+            continue;
+        };
+        if includes.matches(&rel) {
+            files.push((rel, entry.into_path()));
+        }
+    }
+    Ok(files)
+}
+
+/// Reads a file as text; invalid UTF-8 is replaced, never an error.
+pub fn read_text(path: &Path) -> Result<String, LoadError> {
+    let bytes = std::fs::read(path).map_err(|e| LoadError {
+        path: path.to_path_buf(),
+        message: e.to_string(),
+    })?;
+    Ok(String::from_utf8_lossy(&bytes).into_owned())
 }
 
 #[cfg(test)]
@@ -216,6 +269,24 @@ mod tests {
         let names: Vec<&str> = p.files.iter().map(|f| f.rel.as_str()).collect();
         assert!(names.contains(&"usecases.md") && names.contains(&"README.md"));
         assert!(names.iter().all(|n| n.ends_with(".md")));
+    }
+
+    #[test]
+    fn fr_212_next_id_is_one_higher_than_highest() {
+        let p = project(&[("a.md", "## FR-007 A\n## FR-102 B\n## FR-? C\n## UC-001 U\n")]);
+        assert_eq!(p.next_id("FR"), "FR-103");
+        assert_eq!(p.next_id("UC"), "UC-002");
+        assert_eq!(p.next_id("TC"), "TC-001");
+        let p = project(&[("a.md", "## FR-1234 A\n")]);
+        assert_eq!(p.next_id("FR"), "FR-1235");
+    }
+
+    #[test]
+    fn fr_201_include_patterns_match_relative_paths() {
+        let inc = Includes::new(&["requirements/*.md".to_string()]).unwrap();
+        assert!(inc.matches("requirements/a.md"));
+        assert!(!inc.matches("requirements/sub/a.md"));
+        assert!(!inc.matches("README.md"));
     }
 
     #[test]

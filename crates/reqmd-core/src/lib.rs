@@ -13,5 +13,5 @@ pub mod source;
 pub use config::{Config, ConfigError, find_root};
 pub use diag::{Diagnostic, Level, Severity};
 pub use model::{BodyField, Item, Link, MetaPair, Reference, Step, Target};
-pub use project::{LoadError, Project, Resolution};
+pub use project::{Includes, LoadError, Project, Resolution, read_text, relative_path, scan_files};
 pub use source::{FileId, SourceFile};

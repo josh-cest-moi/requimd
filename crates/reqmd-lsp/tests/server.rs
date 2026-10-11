@@ -1,0 +1,496 @@
+//! End-to-end tests over an in-memory connection.
+#![allow(clippy::unwrap_used, clippy::panic)]
+
+use std::fs;
+use std::path::{Path, PathBuf};
+use std::thread::JoinHandle;
+use std::time::{Duration, Instant};
+
+use lsp_server::{Connection, Message, Notification, Request, RequestId};
+use reqmd_lsp::convert::path_to_uri;
+use serde_json::{Value, json};
+
+struct Client {
+    conn: Connection,
+    server: Option<JoinHandle<()>>,
+    next_id: i32,
+    /// Notifications received while waiting for responses.
+    inbox: Vec<Notification>,
+}
+
+impl Client {
+    fn start(root: &Path, capabilities: Value) -> (Client, Value) {
+        let (server_conn, conn) = Connection::memory();
+        let server = std::thread::spawn(move || {
+            reqmd_lsp::run(&server_conn).unwrap();
+        });
+        let mut c = Client {
+            conn,
+            server: Some(server),
+            next_id: 0,
+            inbox: Vec::new(),
+        };
+        let init = c.request(
+            "initialize",
+            json!({
+                "processId": null,
+                "rootUri": uri(root),
+                "capabilities": capabilities,
+            }),
+        );
+        c.notify("initialized", json!({}));
+        (c, init)
+    }
+
+    fn request(&mut self, method: &str, params: Value) -> Value {
+        self.next_id += 1;
+        let id = RequestId::from(self.next_id);
+        let req = Request::new(id.clone(), method.into(), params);
+        self.conn.sender.send(req.into()).unwrap();
+        loop {
+            match self
+                .conn
+                .receiver
+                .recv_timeout(Duration::from_secs(10))
+                .unwrap()
+            {
+                Message::Response(r) if r.id == id => match r.response_result {
+                    Ok(v) => return v,
+                    Err(e) => panic!("{method}: {e:?}"),
+                },
+                Message::Notification(n) => self.inbox.push(n),
+                // Requests from the server, e.g. client/registerCapability.
+                _ => {}
+            }
+        }
+    }
+
+    fn notify(&self, method: &str, params: Value) {
+        let n = Notification::new(method.into(), params);
+        self.conn.sender.send(n.into()).unwrap();
+    }
+
+    /// Waits for the next diagnostics of `uri`, also from the inbox.
+    fn diagnostics(&mut self, uri: &str, timeout: Duration) -> Option<Vec<Value>> {
+        let is_for = |n: &Notification| {
+            n.method == "textDocument/publishDiagnostics" && n.params["uri"] == uri
+        };
+        if let Some(i) = self.inbox.iter().position(is_for) {
+            let n = self.inbox.remove(i);
+            return Some(n.params["diagnostics"].as_array().unwrap().clone());
+        }
+        let deadline = Instant::now() + timeout;
+        loop {
+            let left = deadline.saturating_duration_since(Instant::now());
+            match self.conn.receiver.recv_timeout(left) {
+                Ok(Message::Notification(n)) if is_for(&n) => {
+                    return Some(n.params["diagnostics"].as_array().unwrap().clone());
+                }
+                Ok(Message::Notification(n)) => self.inbox.push(n),
+                Ok(_) => {}
+                Err(_) => return None,
+            }
+        }
+    }
+
+    fn open(&self, path: &Path, text: &str) {
+        self.notify(
+            "textDocument/didOpen",
+            json!({ "textDocument": {
+                "uri": uri(path), "languageId": "markdown", "version": 1, "text": text,
+            }}),
+        );
+    }
+
+    fn change(&self, path: &Path, version: i32, text: &str) {
+        self.notify(
+            "textDocument/didChange",
+            json!({
+                "textDocument": { "uri": uri(path), "version": version },
+                "contentChanges": [{ "text": text }],
+            }),
+        );
+    }
+
+    fn shutdown(mut self) {
+        self.request("shutdown", Value::Null);
+        self.notify("exit", Value::Null);
+        if let Some(s) = self.server.take() {
+            s.join().unwrap();
+        }
+    }
+}
+
+fn uri(path: &Path) -> String {
+    path_to_uri(path).unwrap().as_str().to_string()
+}
+
+fn temp_project(name: &str, config: &str, files: &[(&str, &str)]) -> PathBuf {
+    let dir = std::env::temp_dir().join(format!("reqmd-lsp-{name}-{}", std::process::id()));
+    let _ = fs::remove_dir_all(&dir);
+    fs::create_dir_all(&dir).unwrap();
+    let dir = std::path::absolute(dir).unwrap();
+    fs::write(dir.join("reqmd.toml"), config).unwrap();
+    for (n, t) in files {
+        let p = dir.join(n);
+        fs::create_dir_all(p.parent().unwrap()).unwrap();
+        fs::write(p, t).unwrap();
+    }
+    dir
+}
+
+fn checks(diags: &[Value]) -> Vec<String> {
+    diags
+        .iter()
+        .map(|d| d["code"].as_str().unwrap().to_string())
+        .collect()
+}
+
+const SECOND: Duration = Duration::from_secs(1);
+
+#[test]
+fn fr_200_initialize_capabilities_and_shutdown() {
+    let dir = temp_project("init", "", &[]);
+    let caps = json!({ "general": { "positionEncodings": ["utf-8", "utf-16"] } });
+    let (c, init) = Client::start(&dir, caps);
+    let caps = &init["capabilities"];
+    assert_eq!(caps["positionEncoding"], "utf-8");
+    for key in [
+        "hoverProvider",
+        "definitionProvider",
+        "referencesProvider",
+        "implementationProvider",
+        "documentSymbolProvider",
+        "workspaceSymbolProvider",
+        "codeActionProvider",
+        "completionProvider",
+    ] {
+        assert!(!caps[key].is_null(), "missing {key}");
+    }
+    assert_eq!(init["serverInfo"]["name"], "reqmd");
+    c.shutdown();
+
+    let (c, init) = Client::start(&dir, json!({}));
+    assert_eq!(init["capabilities"]["positionEncoding"], "utf-16");
+    c.shutdown();
+}
+
+#[test]
+fn fr_201_files_outside_include_patterns_get_nothing() {
+    let dir = temp_project(
+        "scope",
+        "[project]\ninclude = [\"req/*.md\"]\n",
+        &[("req/a.md", "## FR-? A\n"), ("notes.md", "## FR-? B\n")],
+    );
+    let (mut c, _) = Client::start(&dir, json!({}));
+    c.open(&dir.join("notes.md"), "## FR-? B\n\nFR-1\n");
+    c.open(&dir.join("req/a.md"), "## FR-? A\n");
+    let d = c.diagnostics(&uri(&dir.join("req/a.md")), SECOND).unwrap();
+    assert_eq!(checks(&d), ["placeholder"]);
+    assert!(
+        c.diagnostics(&uri(&dir.join("notes.md")), SECOND / 2)
+            .is_none()
+    );
+    let r = c.request(
+        "textDocument/completion",
+        json!({ "textDocument": { "uri": uri(&dir.join("notes.md")) }, "position": { "line": 2, "character": 4 } }),
+    );
+    assert!(r.is_null());
+    c.shutdown();
+}
+
+#[test]
+fn fr_202_diagnostics_on_open_change_and_in_other_documents() {
+    let uc = "## UC-001 U\n\n- s1: Go.\n";
+    let fr = "## FR-001 F\n\nText.\n";
+    let dir = temp_project("live", "", &[("uc.md", uc), ("fr.md", fr)]);
+    let (mut c, _) = Client::start(&dir, json!({}));
+    let (uc_path, fr_path) = (dir.join("uc.md"), dir.join("fr.md"));
+    c.open(&uc_path, uc);
+    let d = c.diagnostics(&uri(&uc_path), SECOND).unwrap();
+    assert_eq!(checks(&d), ["uncovered-step"]);
+    assert_eq!(d[0]["range"]["start"], json!({ "line": 2, "character": 2 }));
+    c.open(&fr_path, fr);
+    assert_eq!(
+        c.diagnostics(&uri(&fr_path), SECOND).unwrap(),
+        Vec::<Value>::new()
+    );
+    // Editing fr.md (unsaved) covers the step in uc.md.
+    c.change(
+        &fr_path,
+        2,
+        "## FR-001 F\nimpl: UC-001.s1  prio: urgent\n\nText.\n",
+    );
+    let d = c.diagnostics(&uri(&fr_path), SECOND).unwrap();
+    assert_eq!(checks(&d), ["invalid-value"]);
+    assert_eq!(
+        c.diagnostics(&uri(&uc_path), SECOND).unwrap(),
+        Vec::<Value>::new()
+    );
+    c.shutdown();
+}
+
+#[test]
+fn fr_217_external_changes_by_polling() {
+    let uc = "## UC-001 U\n\n- s1: Go.\n";
+    let dir = temp_project("poll", "", &[("uc.md", uc)]);
+    let (mut c, _) = Client::start(&dir, json!({}));
+    let uc_path = dir.join("uc.md");
+    c.open(&uc_path, uc);
+    assert_eq!(
+        checks(&c.diagnostics(&uri(&uc_path), SECOND).unwrap()),
+        ["uncovered-step"]
+    );
+    // As by a git checkout: a new file covers the step.
+    fs::write(dir.join("fr.md"), "## FR-001 F\nimpl: UC-001.s1\n").unwrap();
+    let d = c.diagnostics(&uri(&uc_path), 5 * SECOND).unwrap();
+    assert!(d.is_empty(), "{d:?}");
+    // A configuration change is picked up as well.
+    fs::write(
+        dir.join("reqmd.toml"),
+        "[checks]\nuncovered-step = \"off\"\n",
+    )
+    .unwrap();
+    fs::remove_file(dir.join("fr.md")).unwrap();
+    std::thread::sleep(3 * SECOND);
+    let r = c.request("workspace/symbol", json!({ "query": "FR-001" }));
+    assert_eq!(r.as_array().unwrap().len(), 0);
+    assert!(
+        c.diagnostics(&uri(&uc_path), SECOND)
+            .is_none_or(|d| d.is_empty())
+    );
+    c.shutdown();
+}
+
+#[test]
+fn fr_217_external_changes_reported_by_client() {
+    let uc = "## UC-001 U\n\n- s1: Go.\n";
+    let dir = temp_project("watch", "", &[("uc.md", uc)]);
+    let caps = json!({ "workspace": { "didChangeWatchedFiles": { "dynamicRegistration": true } } });
+    let (mut c, _) = Client::start(&dir, caps);
+    let uc_path = dir.join("uc.md");
+    c.open(&uc_path, uc);
+    assert_eq!(
+        checks(&c.diagnostics(&uri(&uc_path), SECOND).unwrap()),
+        ["uncovered-step"]
+    );
+    let fr = dir.join("fr.md");
+    fs::write(&fr, "## FR-001 F\nimpl: UC-001.s1\n").unwrap();
+    c.notify(
+        "workspace/didChangeWatchedFiles",
+        json!({ "changes": [{ "uri": uri(&fr), "type": 1 }] }),
+    );
+    assert!(c.diagnostics(&uri(&uc_path), SECOND).unwrap().is_empty());
+    fs::remove_file(&fr).unwrap();
+    c.notify(
+        "workspace/didChangeWatchedFiles",
+        json!({ "changes": [{ "uri": uri(&fr), "type": 3 }] }),
+    );
+    assert_eq!(
+        checks(&c.diagnostics(&uri(&uc_path), SECOND).unwrap()),
+        ["uncovered-step"]
+    );
+    c.shutdown();
+}
+
+#[test]
+fn fr_203_to_fr_212_requests_over_protocol() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../examples/shop");
+    let root = std::path::absolute(root).unwrap();
+    let (mut c, _) = Client::start(&root, json!({}));
+    let fr = root.join("functional.md");
+    let text = fs::read_to_string(&fr).unwrap();
+    c.open(&fr, &text);
+    let doc = json!({ "uri": uri(&fr) });
+    // Line 3 (0-based): "impl: UC-012.s1  prio: must", cursor on the step reference.
+    let pos = json!({ "textDocument": doc, "position": { "line": 3, "character": 10 } });
+
+    let hover = c.request("textDocument/hover", pos.clone());
+    assert!(
+        hover["contents"]["value"]
+            .as_str()
+            .unwrap()
+            .contains("Customer opens the cart.")
+    );
+    let def = c.request("textDocument/definition", pos.clone());
+    assert!(def["uri"].as_str().unwrap().ends_with("usecases.md"));
+    assert_eq!(def["range"]["start"]["line"], 7);
+    let mut refs_params = pos.clone();
+    refs_params["context"] = json!({ "includeDeclaration": false });
+    let refs = c.request("textDocument/references", refs_params);
+    assert_eq!(refs.as_array().unwrap().len(), 1);
+    let imp = c.request("textDocument/implementation", pos);
+    assert_eq!(imp.as_array().unwrap().len(), 1);
+
+    let symbols = c.request(
+        "textDocument/documentSymbol",
+        json!({ "textDocument": doc }),
+    );
+    assert_eq!(symbols.as_array().unwrap().len(), 5);
+    let ws = c.request("workspace/symbol", json!({ "query": "vat" }));
+    // FR-104, BR-003 and TC-220 have "VAT" in the title.
+    assert_eq!(ws.as_array().unwrap().len(), 3);
+
+    let completion = c.request(
+        "textDocument/completion",
+        json!({ "textDocument": doc, "position": { "line": 3, "character": 6 },
+                "context": { "triggerKind": 1 } }),
+    );
+    let labels: Vec<&str> = completion["items"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|i| i["label"].as_str().unwrap())
+        .collect();
+    assert!(labels.contains(&"UC-012.s2a"), "{labels:?}");
+
+    // FR-212 on an unsaved placeholder.
+    c.change(&fr, 2, &format!("{text}\n## FR-? New\n"));
+    let line = text.lines().count() + 1;
+    let actions = c.request(
+        "textDocument/codeAction",
+        json!({ "textDocument": doc,
+                "range": { "start": { "line": line, "character": 4 }, "end": { "line": line, "character": 4 } },
+                "context": { "diagnostics": [] } }),
+    );
+    assert_eq!(actions[0]["title"], "Assign ID FR-106");
+    c.shutdown();
+}
+
+/// 2,000 items in 200 files (NFR-001 meter).
+fn generated_project(name: &str) -> PathBuf {
+    let mut files = Vec::new();
+    for f in 0..200 {
+        let mut text = format!("# File {f}\n\n## UC-{f:04} Use case {f}\nactor: Customer\n\n");
+        for s in 1..=5 {
+            text.push_str(&format!("- s{s}: Step {s} of the use case.\n"));
+        }
+        for i in 0..9 {
+            let n = f * 9 + i;
+            text.push_str(&format!(
+                "\n## FR-{n:04} Requirement {n}\nimpl: UC-{f:04}.s{}  prio: must\n\nWhen the customer acts, the system shall respond (see FR-{:04}).\n",
+                i % 5 + 1,
+                (n + 1) % 1800
+            ));
+        }
+        files.push((format!("req/f{f:03}.md"), text));
+    }
+    let refs: Vec<(&str, &str)> = files
+        .iter()
+        .map(|(n, t)| (n.as_str(), t.as_str()))
+        .collect();
+    temp_project(name, "", &refs)
+}
+
+#[test]
+fn nfr_001_diagnostics_latency_on_2000_items() {
+    let dir = generated_project("latency");
+    let (mut c, _) = Client::start(&dir, json!({}));
+    let path = dir.join("req/f100.md");
+    let text = fs::read_to_string(&path).unwrap();
+    c.open(&path, &text);
+    c.diagnostics(&uri(&path), 5 * SECOND).unwrap();
+    let mut times = Vec::new();
+    for v in 0..20 {
+        // Alternate between a valid and an invalid value.
+        let prio = if v % 2 == 0 { "urgent" } else { "must" };
+        let edited = text.replacen("prio: must", &format!("prio: {prio}"), 1);
+        let start = Instant::now();
+        c.change(&path, v + 2, &edited);
+        c.diagnostics(&uri(&path), 5 * SECOND).unwrap();
+        times.push(start.elapsed());
+    }
+    times.sort();
+    let p95 = times[times.len() * 95 / 100 - 1];
+    // must: 300 ms (release build); this unoptimised test is a coarse bound.
+    assert!(
+        p95 < Duration::from_millis(300),
+        "p95 {p95:?}, all {times:?}"
+    );
+    c.shutdown();
+}
+
+#[test]
+fn nfr_003_server_start_until_item_graph_complete() {
+    let dir = generated_project("start");
+    let start = Instant::now();
+    let (mut c, _) = Client::start(&dir, json!({}));
+    let r = c.request("workspace/symbol", json!({ "query": "FR-1799" }));
+    let elapsed = start.elapsed();
+    assert_eq!(r.as_array().unwrap().len(), 1);
+    assert!(elapsed < 2 * SECOND, "took {elapsed:?}");
+    c.shutdown();
+}
+
+#[test]
+fn nfr_009_no_crash_on_10000_random_edits() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../examples");
+    let root = std::path::absolute(root).unwrap();
+    let mut docs = Vec::new();
+    for dir in ["shop", "broken"] {
+        for e in fs::read_dir(root.join(dir)).unwrap() {
+            let p = e.unwrap().path();
+            if p.extension().is_some_and(|x| x == "md") {
+                let t = fs::read_to_string(&p).unwrap();
+                docs.push((p, t));
+            }
+        }
+    }
+    let mut seed: u64 = 0x9e37_79b9_7f4a_7c15;
+    let mut rand = move || {
+        seed ^= seed << 13;
+        seed ^= seed >> 7;
+        seed ^= seed << 17;
+        seed
+    };
+    let alphabet: Vec<char> = "#-: \n\t`*[]|.,?sSFRUC0123456789äé→\r".chars().collect();
+    let methods = [
+        "textDocument/hover",
+        "textDocument/definition",
+        "textDocument/implementation",
+        "textDocument/completion",
+    ];
+    let mut clients = Vec::new();
+    for project in ["shop", "broken"] {
+        let (c, _) = Client::start(&root.join(project), json!({}));
+        clients.push(c);
+    }
+    let mut texts: Vec<Vec<char>> = docs.iter().map(|(_, t)| t.chars().collect()).collect();
+    for (i, (p, t)) in docs.iter().enumerate() {
+        let c = &clients[usize::from(p.to_string_lossy().contains("broken"))];
+        c.open(p, t);
+        let _ = i;
+    }
+    for edit in 0..10_000 {
+        let d = (rand() as usize) % docs.len();
+        let chars = &mut texts[d];
+        let pos = (rand() as usize) % (chars.len() + 1);
+        let ch = alphabet[(rand() as usize) % alphabet.len()];
+        match rand() % 3 {
+            0 => chars.insert(pos, ch),
+            1 if pos < chars.len() => {
+                chars.remove(pos);
+            }
+            _ if pos < chars.len() => chars[pos] = ch,
+            _ => {}
+        }
+        let text: String = chars.iter().collect();
+        let path = &docs[d].0;
+        let c = &mut clients[usize::from(path.to_string_lossy().contains("broken"))];
+        c.change(path, edit + 2, &text);
+        if edit % 5 == 0 {
+            let line = rand() % 40;
+            let character = rand() % 60;
+            let method = methods[(rand() as usize) % methods.len()];
+            c.request(
+                method,
+                json!({ "textDocument": { "uri": uri(path) },
+                        "position": { "line": line, "character": character } }),
+            );
+        }
+        c.inbox.clear();
+    }
+    for c in clients {
+        c.shutdown();
+    }
+}

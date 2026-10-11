@@ -111,6 +111,10 @@ status = "draft"
 [checks]
 # Severity by check id: "error", "warning", "info" or "off", e.g.
 # uncovered-step = "info"
+
+[lsp]
+# Characters of item text shown on hover (FR-205).
+hover-length = 500
 "#;
 
 /// An item type, e.g. `functional` with prefix `FR`.
@@ -153,6 +157,8 @@ pub struct Config {
     pub values: BTreeMap<String, Vec<String>>,
     pub defaults: BTreeMap<String, String>,
     pub checks: BTreeMap<String, CheckConfig>,
+    /// Characters of item text shown on hover (FR-205).
+    pub hover_length: usize,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -270,6 +276,14 @@ struct Raw {
     defaults: BTreeMap<String, String>,
     #[serde(default)]
     checks: BTreeMap<String, toml::Value>,
+    #[serde(default)]
+    lsp: RawLsp,
+}
+
+#[derive(Debug, Default, Deserialize)]
+#[serde(deny_unknown_fields, rename_all = "kebab-case")]
+struct RawLsp {
+    hover_length: Option<usize>,
 }
 
 #[derive(Debug, Default, Deserialize)]
@@ -324,6 +338,9 @@ impl Raw {
         }
         if over.fields.meta.is_some() {
             self.fields.meta = over.fields.meta;
+        }
+        if over.lsp.hover_length.is_some() {
+            self.lsp.hover_length = over.lsp.hover_length;
         }
         self.types.extend(over.types);
         self.links.extend(over.links);
@@ -455,6 +472,7 @@ impl Raw {
             values: self.values,
             defaults: self.defaults,
             checks,
+            hover_length: self.lsp.hover_length.unwrap_or(500),
         })
     }
 }
@@ -560,6 +578,14 @@ allow = ["Fast Track"]
         );
         assert_eq!(c.check_level("weak-word"), Some(Level::Off));
         assert!(c.checks["weak-word"].options.contains_key("allow"));
+        assert_eq!(c.hover_length, 500);
+    }
+
+    #[test]
+    fn fr_205_hover_length_configurable() {
+        let c = Config::from_toml("[lsp]\nhover-length = 80\n", None).unwrap();
+        assert_eq!(c.hover_length, 80);
+        assert!(Config::from_toml("[lsp]\nhover_length = 80\n", None).is_err());
     }
 
     #[test]

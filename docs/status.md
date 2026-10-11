@@ -14,12 +14,25 @@ As of 2026-10-11. Update this file at the end of every working session.
   a test). `reqmd check` passes on this repository and `examples/shop`;
   `examples/broken` yields exactly the M1 rows of `EXPECTED.md`. Open for
   M1: NFR-004 needs a green CI run on GitHub (repository not pushed yet).
-- **M2 Language server core: next.**
+- **M2 Language server core: implemented, CI not yet run.** New crate
+  `crates/reqmd-lsp` (lsp-server, synchronous loop, full text sync, UTF-8
+  or UTF-16 positions as the client offers), started by `reqmd lsp`. All
+  `must` items of M2 have tests; end-to-end tests run over an in-memory
+  connection, including NFR-001 (latency), NFR-003 (start) and NFR-009
+  (10,000 random edits). NFR-007 is checked against Neovim 0.12.6 without
+  plugins by `scripts/nvim-check.lua`, which `cargo test` runs when `nvim`
+  is installed; all features pass (see `docs/neovim.md`).
+- **M3 Authoring comfort: next.**
 
 ## Decision log
 
 | Date | Decision | Where recorded |
 |------|----------|----------------|
+| 2026-10-11 | Hover length: `[lsp] hover-length`, default 500 characters; glossary hover with FR-011 in M3 | FR-205 |
+| 2026-10-11 | FR-212 in M2 uses only IDs in the project; the lock file joins in M4 | this file |
+| 2026-10-11 | Go to implementation on a use case includes links to its steps | FR-208 |
+| 2026-10-11 | Completion triggers: `-` and `.`; in link values also space and comma; manual completion searches titles | `docs/neovim.md` |
+| 2026-10-11 | FR-217: client file watching if offered, else the server polls every 2 s | this file |
 | 2026-10-11 | Workspace: `reqmd-core`, `reqmd-checks`, `reqmd-cli`; `reqmd-lsp` follows in M2 | this file |
 | 2026-10-11 | Built-in defaults = types, links, fields and values of the root `reqmd.toml` without `check`/`sev` | FR-014 |
 | 2026-10-11 | Project config merged with defaults per entry (`[types.x]`, `[links.x]`, value set) | FR-014 |
@@ -62,6 +75,12 @@ As of 2026-10-11. Update this file at the end of every working session.
      errors (exit code 2).
    - Per-entry merging means default item types cannot be removed, only
      replaced.
+6. **Interpretations in M2 to confirm:**
+   - Until M4, "Assign ID" may hand out again the ID of a deleted item if
+     it was the highest of its prefix (BR-002, accepted for M2).
+   - Find references on an item also lists references to its steps.
+   - Language features work only in included files (FR-201), also hover
+     and go to definition, not only diagnostics and completion.
 
 ### Technical
 
@@ -73,9 +92,13 @@ As of 2026-10-11. Update this file at the end of every working session.
 
 ## Next steps
 
-1. Push this repository to GitHub and check the CI run (NFR-004).
-2. Owner: review the spec changes and interpretations above.
-3. Start M2: `reqmd-lsp` crate with lsp-server, FR-200 ff.
+1. Push this repository to GitHub and check the CI run (NFR-004, and
+   NFR-007 on Linux and macOS).
+2. Owner: try the language server in Neovim (`docs/neovim.md`) and review
+   the spec changes and interpretations above.
+3. Start M3: glossary (FR-011), language checks (FR-110 ff.), further LSP
+   features (FR-209, FR-213 to FR-215, FR-219), CLI commands FR-304 to
+   FR-306.
 
 ## Related documents outside the repo
 

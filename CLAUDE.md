@@ -10,8 +10,10 @@ as product owner.
 
 ## Status
 
-Specification done (M0), M1 (parser and `reqmd check`) implemented in the
-cargo workspace under `crates/`. Next is milestone M2 in `docs/roadmap.md`. **Read `docs/status.md` first**: it holds the decision
+Specification done (M0); M1 (parser and `reqmd check`) and M2 (language
+server, `reqmd lsp`) implemented in the cargo workspace under `crates/`.
+Next is milestone M3 in `docs/roadmap.md`. Language server features are
+checked in real Neovim by `scripts/nvim-check.lua`. **Read `docs/status.md` first**: it holds the decision
 log, open questions and next steps.
 
 Implementation language is Rust (ADR-0001, accepted). Markdown parser

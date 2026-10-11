@@ -20,6 +20,8 @@ pub struct Item {
     pub id_span: Range<usize>,
     /// From the line after the heading to the end of the item (FR-002).
     pub body: Range<usize>,
+    /// The metadata block at the start of the body; empty if there is none.
+    pub meta_span: Range<usize>,
     /// Metadata pairs (FR-003), including unknown keys and link keys.
     pub meta: Vec<MetaPair>,
     pub links: Vec<Link>,

@@ -32,6 +32,8 @@ enum Command {
     },
     /// Create reqmd.toml and an empty glossary in the current directory.
     Init,
+    /// Start the language server on stdin and stdout.
+    Lsp,
 }
 
 #[derive(Clone, Copy, ValueEnum)]
@@ -54,6 +56,11 @@ fn main() -> ExitCode {
             strict,
         } => check(&paths, format, strict),
         Command::Init => init(),
+        // FR-308
+        Command::Lsp => match reqmd_lsp::run_stdio() {
+            Ok(()) => OK,
+            Err(e) => fail(&format!("language server: {e}")),
+        },
     };
     ExitCode::from(code)
 }

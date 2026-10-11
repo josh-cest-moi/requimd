@@ -11,6 +11,7 @@ publish = false
 [workspace.dependencies]
 reqmd-core = { path = "crates/reqmd-core" }
 reqmd-checks = { path = "crates/reqmd-checks" }
+reqmd-lsp = { path = "crates/reqmd-lsp" }
 
 pulldown-cmark = { version = "0.13.4", default-features = false }
 toml = "1.1.8"
@@ -19,6 +20,9 @@ serde_json = "1.0.154"
 clap = { version = "4.6.7", features = ["derive"] }
 globset = "0.4.20"
 walkdir = "2.5.0"
+lsp-server = "0.10.0"
+lsp-types = "0.97.0"
+crossbeam-channel = "0.5.17"
 
 # No unwrap/expect/panic outside tests: the parser must survive any input
 # (FR-012, NFR-009). Exceptions in tests are allowed via clippy.toml.

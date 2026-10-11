@@ -221,6 +221,7 @@ fn parse_item(
         heading: h.range.start..trim_end(text, h.range.clone()).end,
         id_span: head.id_span,
         body: body.clone(),
+        meta_span: body.start..body.start,
         meta: Vec::new(),
         links: Vec::new(),
         fields: Vec::new(),
@@ -229,6 +230,7 @@ fn parse_item(
     };
 
     let meta_end = parse_meta(config, ty, text, doc, body.clone(), &mut item);
+    item.meta_span = body.start..meta_end;
     let rest = meta_end..body.end;
     parse_fields(ty, text, doc, rest.clone(), &mut item);
     if ty.name == USECASE {
@@ -478,6 +480,18 @@ fn scan_refs(
             i += 1;
         }
     }
+}
+
+/// Code blocks and inline code spans of a text, in document order (FR-009).
+pub fn code_ranges(text: &str) -> Vec<Range<usize>> {
+    scan(text).code
+}
+
+/// `key:` at `at` followed by whitespace or the line end, as in metadata
+/// lines and body fields. Returns the end of the key and the position after
+/// the colon.
+pub fn key_colon(text: &str, at: usize) -> Option<(usize, usize)> {
+    ident_colon(text.as_bytes(), at)
 }
 
 /// Parses a whole string as a reference (FR-007), e.g. `UC-012.s2`.

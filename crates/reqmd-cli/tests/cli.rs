@@ -227,15 +227,88 @@ fn test_names() -> Vec<String> {
     names
 }
 
+/// One JSON-RPC message with its header.
+fn frame(body: &str) -> String {
+    format!("Content-Length: {}\r\n\r\n{body}", body.len())
+}
+
 #[test]
-fn nfr_010_every_m1_must_requirement_has_a_test() {
-    // `must` items of M1 in docs/roadmap.md.
+fn fr_308_lsp_command_speaks_lsp_over_stdio() {
+    use std::io::{Read, Write};
+    use std::process::Stdio;
+    let mut child = Command::new(env!("CARGO_BIN_EXE_reqmd"))
+        .arg("lsp")
+        .current_dir(examples("shop"))
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .spawn()
+        .unwrap();
+    let mut stdin = child.stdin.take().unwrap();
+    for body in [
+        r#"{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"capabilities":{}}}"#,
+        r#"{"jsonrpc":"2.0","method":"initialized","params":{}}"#,
+        r#"{"jsonrpc":"2.0","id":2,"method":"shutdown"}"#,
+        r#"{"jsonrpc":"2.0","method":"exit"}"#,
+    ] {
+        stdin.write_all(frame(body).as_bytes()).unwrap();
+    }
+    drop(stdin);
+    let mut out = String::new();
+    child
+        .stdout
+        .take()
+        .unwrap()
+        .read_to_string(&mut out)
+        .unwrap();
+    let status = child.wait().unwrap();
+    assert!(status.success(), "{status:?}");
+    assert!(out.contains(r#""hoverProvider":true"#), "{out}");
+    assert!(out.contains(r#""id":2"#), "{out}");
+}
+
+#[test]
+fn nfr_007_neovim_builtin_client_without_plugins() {
+    // Runs scripts/nvim-check.lua if Neovim is installed; CI installs it.
+    let nvim = if cfg!(windows) { "nvim.exe" } else { "nvim" };
+    if Command::new(nvim).arg("--version").output().is_err() {
+        eprintln!("nvim not found; NFR-007 check skipped");
+        return;
+    }
+    let o = Command::new(nvim)
+        .args(["--headless", "--clean", "-l", "scripts/nvim-check.lua"])
+        .arg(env!("CARGO_BIN_EXE_reqmd"))
+        .current_dir(repo())
+        .output()
+        .unwrap();
+    let out = stdout(&o);
+    assert!(
+        o.status.success(),
+        "{out}{}",
+        String::from_utf8_lossy(&o.stderr)
+    );
+    assert!(
+        !out.contains("FAIL") && out.contains("PASS shutdown"),
+        "{out}"
+    );
+}
+
+#[test]
+fn nfr_010_every_must_requirement_of_m1_and_m2_has_a_test() {
+    // `must` items of M1 and M2 in docs/roadmap.md.
     let mut ids: Vec<String> = Vec::new();
     ids.extend((1..=10).chain(12..=14).map(|n| format!("fr_{n:03}")));
     ids.extend((100..=109).chain([115, 117]).map(|n| format!("fr_{n:03}")));
     ids.extend((300..=303).map(|n| format!("fr_{n:03}")));
     ids.extend(["nfr_002", "nfr_004", "nfr_006", "nfr_008", "nfr_010"].map(String::from));
     ids.extend(["br_001", "br_003", "br_005"].map(String::from));
+    // M2
+    ids.extend(
+        (200..=208)
+            .chain(210..=212)
+            .chain([217, 308])
+            .map(|n| format!("fr_{n:03}")),
+    );
+    ids.extend(["nfr_001", "nfr_003", "nfr_007", "nfr_009"].map(String::from));
     let names = test_names();
     let missing: Vec<&String> = ids
         .iter()

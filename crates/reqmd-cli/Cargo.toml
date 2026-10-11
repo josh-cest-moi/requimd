@@ -13,6 +13,7 @@ path = "src/main.rs"
 [dependencies]
 reqmd-core.workspace = true
 reqmd-checks.workspace = true
+reqmd-lsp.workspace = true
 clap.workspace = true
 serde.workspace = true
 serde_json.workspace = true

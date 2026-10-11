@@ -25,6 +25,11 @@ jobs:
         with:
           components: rustfmt, clippy
       - uses: Swatinem/rust-cache@v2
+      # Neovim for the NFR-007 test (scripts/nvim-check.lua).
+      - uses: rhysd/action-setup-vim@v1
+        with:
+          neovim: true
+          version: stable
       - run: cargo fmt --all --check
       - run: cargo clippy --all-targets -- -D warnings
       - run: cargo test --all
