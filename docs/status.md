@@ -60,11 +60,16 @@ As of 2026-10-12. Update this file at the end of every working session.
   one `cat-file --batch`), compares by ID and names the changed parts;
   text or `--format json`. Tested against a real git repository with the
   project in a subdirectory.
+- **FR-404 Diagram export: done.** `requimd export mermaid <ID> [--depth n]
+  [-o file]` (CLI module `export/mermaid.rs`): Mermaid flowchart in a
+  Markdown code block. Rendering checked with Mermaid 11.4 in a browser.
+  All `could` items after M5 are done.
 
 ## Decision log
 
 | Date | Decision | Where recorded |
 |------|----------|----------------|
+| 2026-10-12 | Mermaid diagram as `requimd export mermaid <ID>`, Markdown code block, direct neighbours by default, `--depth` for more; steps inside their use case, mentions dashed, status per node | FR-404 |
 | 2026-10-12 | `requimd diff` calls the `git` command, no git library (NFR-005) | FR-403 |
 | 2026-10-12 | `requimd diff <ref>` compares with the working tree, including uncommitted changes | FR-403 |
 | 2026-10-12 | Changed = title, text, links, other metadata, steps or file differ (whitespace-insensitive as FR-116); status listed with old and new value | FR-403 |
@@ -182,6 +187,14 @@ As of 2026-10-12. Update this file at the end of every working session.
    - Exit code 0 also when there are changes (unlike `check`).
    - A use case's text is compared without its steps; steps are compared
      one by one by label. Moving a step in the list is no change.
+10. **Interpretations in FR-404 to confirm:**
+    - Neighbours follow links and mentions in both directions; the arrow
+      label is the link name from `requimd.toml` (e.g. "implements").
+    - A use case with shown steps is an untitled box holding the use case
+      node and only the steps that shown items point to.
+    - Status colours: draft dashed border, review yellow, approved green,
+      deprecated grey; other configured values are not styled.
+    - Step text is cut at 50 characters.
 
 ### Technical
 
@@ -192,14 +205,14 @@ As of 2026-10-12. Update this file at the end of every working session.
 ## Next steps
 
 1. Owner: try M3 and M4 in Neovim (`docs/neovim.md`) and review the open
-   interpretations above (business questions 5 to 9).
+   interpretations above (business questions 5 to 10).
 2. Alpha release `v0.1.0-alpha.1` (version in `Cargo.toml`): push the
    tag, check the release job and the four archives, then review and test
    the tool on a real project. Further rounds: bump to `-alpha.2` etc.;
    `v0.1.0` when the reviews are done. Test builds without publishing:
    Actions → Release → Run workflow.
-3. After M5: FR-404 (Mermaid export). Later: publish the site on GitHub
-   Pages.
+3. Later: publish the site on GitHub Pages; FR-112 (EARS) and the other
+   ideas in `docs/roadmap.md`.
 
 ## Related documents outside the repo
 

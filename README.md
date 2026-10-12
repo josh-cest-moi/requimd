@@ -54,6 +54,7 @@ The binary `requimd` provides:
 | `requimd export site <dir> [--status …]` | Static website without JavaScript, readable from the file system |
 | `requimd export matrix [-o file]` | Traceability matrix as CSV |
 | `requimd export json [-o file]` | The item graph as JSON |
+| `requimd export mermaid <ID> [--depth n] [-o file]` | An item and its neighbours as a Mermaid diagram in a Markdown code block |
 | `requimd lsp` | Language server on stdio |
 
 Editor setup: `docs/neovim.md`.

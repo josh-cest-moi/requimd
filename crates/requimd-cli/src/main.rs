@@ -103,6 +103,17 @@ enum ExportCommand {
         #[arg(long, short)]
         output: Option<PathBuf>,
     },
+    /// An item and its neighbours as a Mermaid diagram (FR-404).
+    Mermaid {
+        /// Item ID or step reference, e.g. FR-104 or UC-012.s2.
+        id: String,
+        /// Follow references this many steps away.
+        #[arg(long, default_value_t = 1)]
+        depth: usize,
+        /// Write to this file instead of standard output.
+        #[arg(long, short)]
+        output: Option<PathBuf>,
+    },
 }
 
 #[derive(Clone, Copy, ValueEnum)]
@@ -213,6 +224,13 @@ fn export(p: &Project, what: ExportCommand) -> u8 {
         }
         ExportCommand::Matrix { output } => (output, export::matrix::csv(p)),
         ExportCommand::Json { output } => (output, export::json::json(p)),
+        ExportCommand::Mermaid { id, depth, output } => match export::mermaid::start(p, &id) {
+            Ok(start) => (output, export::mermaid::mermaid(p, start, depth)),
+            Err((code, msg)) => {
+                eprintln!("requimd: {msg}");
+                return code;
+            }
+        },
     };
     match output {
         Some(path) => match std::fs::write(&path, text) {

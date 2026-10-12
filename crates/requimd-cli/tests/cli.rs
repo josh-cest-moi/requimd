@@ -841,3 +841,50 @@ fn fr_403_diff_between_references_and_working_tree() {
     assert_eq!(o.status.code(), Some(2));
     assert!(String::from_utf8_lossy(&o.stderr).contains("unknown git reference \"no-such-tag\""));
 }
+
+#[test]
+fn fr_404_mermaid_export_command() {
+    let shop = examples("shop");
+    let o = requimd(&shop, &["export", "mermaid", "FR-104"]);
+    assert_eq!(o.status.code(), Some(0));
+    let out = stdout(&o);
+    assert!(out.starts_with("```mermaid\nflowchart LR\n"), "{out}");
+    assert!(out.contains("FR_104 -->|implements| UC_012_s2"), "{out}");
+    assert!(out.contains("TC_220 -->|verifies| FR_104"), "{out}");
+    assert!(out.contains("class FR_104 review"), "{out}");
+    assert!(
+        out.ends_with("style FR_104 stroke-width:3px\n```\n"),
+        "{out}"
+    );
+
+    // -o writes the same to a file; --depth 0 shows the item alone.
+    let dir = temp_dir("mermaid");
+    let file = dir.join("d.md");
+    let o = requimd(
+        &shop,
+        &[
+            "export",
+            "mermaid",
+            "FR-104",
+            "--depth",
+            "0",
+            "-o",
+            file.to_str().unwrap(),
+        ],
+    );
+    assert_eq!(o.status.code(), Some(0));
+    let written = fs::read_to_string(&file).unwrap();
+    assert!(!written.contains("-->"), "{written}");
+
+    // Exit codes as in FR-305.
+    assert_eq!(
+        requimd(&shop, &["export", "mermaid", "FR-999"])
+            .status
+            .code(),
+        Some(1)
+    );
+    assert_eq!(
+        requimd(&shop, &["export", "mermaid", "nope"]).status.code(),
+        Some(2)
+    );
+}

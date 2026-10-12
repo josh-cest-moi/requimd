@@ -1,5 +1,6 @@
-//! `requimd export site | matrix | json` (FR-400 to FR-402).
+//! `requimd export site | matrix | json | mermaid` (FR-400 to FR-404).
 
 pub mod json;
 pub mod matrix;
+pub mod mermaid;
 pub mod site;

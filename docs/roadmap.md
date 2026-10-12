@@ -56,7 +56,7 @@ Goal: writing and navigating in Neovim 0.12 without plugins.
 - FR-216 (semantic tokens): done on 2026-10-12, moved ahead by the product
   owner; EARS keywords follow with FR-112
 - FR-403 (`requimd diff`): done on 2026-10-12
-- FR-404 (Mermaid export)
+- FR-404 (`requimd export mermaid`): done on 2026-10-12
 
 ## Later / ideas
 
