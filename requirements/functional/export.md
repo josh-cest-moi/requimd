@@ -30,7 +30,24 @@ output states its format version, so consumers detect changes.
 impl: UC-006.s2  prio: could
 
 The system shall provide `requimd diff <ref1> [ref2]`, which lists items
-added, removed or changed between two git references.
+added, removed or changed between two git references. Without `ref2`, it
+compares `ref1` with the working tree, including uncommitted changes. Each
+side is read with its own `requimd.toml`; the files of a reference are read
+with the `git` command.
+
+Items are matched by ID, so a renamed ID appears as removed and added.
+Items without a unique ID (placeholders, duplicates) are not listed. An
+item is changed if one of these parts differs, where runs of whitespace
+count as one space (as in FR-116):
+
+- title, text, links, other metadata;
+- status, shown with the old and new value;
+- steps of a use case, shown as the labels added, removed and changed;
+- file, if the item moved to another file.
+
+The output names the changed parts of each item. With `--format json` it
+is a JSON array. The command ends with exit code 0, or 2 if git fails, for
+example on an unknown reference.
 
 ## FR-404 Diagram export
 impl: UC-006.s2  prio: could
