@@ -120,9 +120,18 @@ number and IDs of implementing items; executing it lists them as in FR-208.
 ## FR-216 Semantic tokens
 impl: UC-001.s3  prio: could
 
-The language server shall provide semantic tokens for item IDs in headings,
-references, metadata keys, EARS keywords and weak words, for highlighting
-in the editor.
+The language server shall provide semantic tokens for highlighting in the
+editor:
+
+- item IDs in headings, and references (links and mentions);
+- metadata keys, body field keys and step labels;
+- glossary terms in item titles and text, matched by the rules of FR-110;
+- every occurrence reported by the weak-word, modal-verb or glossary-alias
+  check (FR-110, FR-114, FR-118). Allowed occurrences (FR-119) and
+  occurrences of a disabled check are not highlighted, so highlighting and
+  diagnostics agree.
+
+EARS keywords are highlighted once FR-112 is implemented.
 
 ## FR-217 External file changes
 impl: UC-003.s2  prio: must

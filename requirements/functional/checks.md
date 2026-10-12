@@ -118,7 +118,8 @@ impl: UC-001.s3  prio: could  check: ears  sev: info
 The system shall detect the EARS pattern of a functional requirement
 (ubiquitous, event-driven "When", state-driven "While", unwanted behaviour
 "If … then", optional feature "Where") and report a diagnostic if the first
-sentence matches none of them. The detected pattern shall be shown on hover.
+sentence matches none of them. The detected pattern shall be shown on hover and its keywords highlighted
+as semantic tokens (FR-216).
 
 ## FR-113 User story pattern
 impl: UC-001.s3  prio: should  check: story-pattern  sev: warning
