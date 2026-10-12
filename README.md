@@ -50,6 +50,7 @@ The binary `requimd` provides:
 | `requimd show <ID>` | Show an item or step with its references |
 | `requimd coverage` | Coverage of use case steps |
 | `requimd review <ID> \| --all` | Mark suspect links as reviewed |
+| `requimd diff <ref1> [ref2] [--format json]` | Items added, removed or changed between two git references, or a reference and the working tree (needs `git`) |
 | `requimd export site <dir> [--status …]` | Static website without JavaScript, readable from the file system |
 | `requimd export matrix [-o file]` | Traceability matrix as CSV |
 | `requimd export json [-o file]` | The item graph as JSON |

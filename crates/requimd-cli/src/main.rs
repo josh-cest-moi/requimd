@@ -1,6 +1,7 @@
 //! The `requimd` binary (FR-300 ff.).
 
 mod commands;
+mod diff;
 mod export;
 
 use std::fs::OpenOptions;
@@ -60,6 +61,16 @@ enum Command {
         /// Mark every suspect link of the project as reviewed.
         #[arg(long)]
         all: bool,
+    },
+    /// List items added, removed or changed between two git references.
+    Diff {
+        /// Old git reference, e.g. a tag, branch or commit.
+        ref1: String,
+        /// New git reference; without it, the working tree.
+        ref2: Option<String>,
+        /// Output format.
+        #[arg(long, value_enum, default_value_t = Format::Text)]
+        format: Format,
     },
     /// Export the project as static site, traceability matrix or JSON.
     Export {
@@ -150,6 +161,22 @@ fn main() -> ExitCode {
                     eprintln!("requimd: {msg}");
                     code
                 }
+            })
+        }
+        // FR-403
+        Command::Diff { ref1, ref2, format } => {
+            with_project(|p, _| match diff::diff(p, &ref1, ref2.as_deref()) {
+                Ok(changes) => {
+                    match format {
+                        Format::Text => print!("{}", diff::text(&changes)),
+                        Format::Json => match serde_json::to_string_pretty(&changes) {
+                            Ok(s) => println!("{s}"),
+                            Err(e) => return fail(&e.to_string()),
+                        },
+                    }
+                    OK
+                }
+                Err(e) => fail(&e),
             })
         }
         // FR-400 to FR-402

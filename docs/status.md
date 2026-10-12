@@ -55,11 +55,19 @@ As of 2026-10-12. Update this file at the end of every working session.
   Item IDs, references, keys, step labels, glossary terms and the findings
   of the weak-word, modal-verb and glossary-alias checks, as standard LSP
   token types (`docs/neovim.md`, "Highlighting"). Passes in Neovim 0.12.6.
+- **FR-403 Requirement changelog: done.** `requimd diff <ref1> [ref2]`
+  (CLI module `diff.rs`) reads references with the `git` command (`ls-tree`,
+  one `cat-file --batch`), compares by ID and names the changed parts;
+  text or `--format json`. Tested against a real git repository with the
+  project in a subdirectory.
 
 ## Decision log
 
 | Date | Decision | Where recorded |
 |------|----------|----------------|
+| 2026-10-12 | `requimd diff` calls the `git` command, no git library (NFR-005) | FR-403 |
+| 2026-10-12 | `requimd diff <ref>` compares with the working tree, including uncommitted changes | FR-403 |
+| 2026-10-12 | Changed = title, text, links, other metadata, steps or file differ (whitespace-insensitive as FR-116); status listed with old and new value | FR-403 |
 | 2026-10-12 | FR-216 before FR-403/FR-404; adds step labels, body fields, glossary terms, modal verbs and aliases; EARS keywords move to FR-112 | FR-216, FR-112, `docs/roadmap.md` |
 | 2026-10-12 | Weak words, modal verbs and aliases are highlighted only where a diagnostic is reported | FR-216 |
 | 2026-10-12 | No Confluence: FR-405 deprecated; stakeholders get PDFs from an external Markdown-to-PDF converter | FR-405 |
@@ -166,6 +174,14 @@ As of 2026-10-12. Update this file at the end of every working session.
      findings over glossary terms (an alias "shopping cart" hides the term
      "cart" inside it).
    - Unknown metadata keys are not highlighted as keys.
+9. **Interpretations in FR-403 to confirm:**
+   - A reference without `requimd.toml` in the project directory has no
+     items, so everything is "added" (e.g. a tag from before the project).
+   - Output is sorted by prefix and number, as in the site index (FR before
+     UC); a summary line ends the text output ("no changes" if none).
+   - Exit code 0 also when there are changes (unlike `check`).
+   - A use case's text is compared without its steps; steps are compared
+     one by one by label. Moving a step in the list is no change.
 
 ### Technical
 
@@ -176,14 +192,14 @@ As of 2026-10-12. Update this file at the end of every working session.
 ## Next steps
 
 1. Owner: try M3 and M4 in Neovim (`docs/neovim.md`) and review the open
-   interpretations above (business questions 5 to 8).
+   interpretations above (business questions 5 to 9).
 2. Alpha release `v0.1.0-alpha.1` (version in `Cargo.toml`): push the
    tag, check the release job and the four archives, then review and test
    the tool on a real project. Further rounds: bump to `-alpha.2` etc.;
    `v0.1.0` when the reviews are done. Test builds without publishing:
    Actions → Release → Run workflow.
-3. After M5: FR-403 (`requimd diff`) and FR-404 (Mermaid export), in
-   separate commits. Later: publish the site on GitHub Pages.
+3. After M5: FR-404 (Mermaid export). Later: publish the site on GitHub
+   Pages.
 
 ## Related documents outside the repo
 

@@ -746,3 +746,98 @@ fn nfr_008_shop_metadata_blocks_end_with_blank_line() {
         }
     }
 }
+
+/// Runs git in `dir` with a fixed identity, so tests work without a
+/// configured user.
+fn git(dir: &Path, args: &[&str]) {
+    let o = Command::new("git")
+        .args([
+            "-c",
+            "user.name=t",
+            "-c",
+            "user.email=t@t",
+            "-c",
+            "core.autocrlf=false",
+        ])
+        .args(args)
+        .current_dir(dir)
+        .output()
+        .unwrap();
+    assert!(
+        o.status.success(),
+        "git {args:?}: {}",
+        String::from_utf8_lossy(&o.stderr)
+    );
+}
+
+#[test]
+fn fr_403_diff_between_references_and_working_tree() {
+    let repo = temp_dir("diff");
+    git(&repo, &["init", "-q"]);
+    // Before the project existed.
+    write(&repo, "README.md", "# Repo\n");
+    git(&repo, &["add", "."]);
+    git(&repo, &["commit", "-q", "-m", "start"]);
+    git(&repo, &["tag", "v0"]);
+
+    // The project lives in a subdirectory of the repository.
+    let dir = repo.join("req");
+    fs::create_dir_all(&dir).unwrap();
+    write(&dir, "requimd.toml", "");
+    write(
+        &dir,
+        "fr.md",
+        "## FR-001 Show cart\n\nThe system shall list all items.\n\n## FR-002 Total\n\nThe system shall show the total.\n",
+    );
+    git(&repo, &["add", "."]);
+    git(&repo, &["commit", "-q", "-m", "v1"]);
+    git(&repo, &["tag", "v1"]);
+
+    write(
+        &dir,
+        "fr.md",
+        "## FR-001 Show cart\nstatus: review\n\nThe system shall list all items.\n\n## FR-003 Hint\n\nThe system shall show a hint.\n",
+    );
+    git(&repo, &["commit", "-q", "-am", "v2"]);
+    git(&repo, &["tag", "v2"]);
+
+    let o = requimd(&dir, &["diff", "v1", "v2"]);
+    assert_eq!(o.status.code(), Some(0));
+    assert_eq!(
+        stdout(&o),
+        "changed  FR-001  Show cart: status draft → review\n\
+         removed  FR-002  Total\n\
+         added    FR-003  Hint\n\
+         1 added, 1 removed, 1 changed\n"
+    );
+
+    // Without ref2: the working tree, including uncommitted edits.
+    write(
+        &dir,
+        "fr.md",
+        "## FR-001 Show the cart\nstatus: review\n\nThe system shall list all items.\n\n## FR-003 Hint\n\nThe system shall show a hint.\n",
+    );
+    let o = requimd(&dir, &["diff", "v2"]);
+    assert_eq!(
+        stdout(&o),
+        "changed  FR-001  Show the cart: title\n0 added, 0 removed, 1 changed\n"
+    );
+    assert_eq!(stdout(&requimd(&dir, &["diff", "HEAD"])), stdout(&o));
+
+    // A reference before the project: everything is added.
+    let o = requimd(&dir, &["diff", "v0", "v1", "--format", "json"]);
+    let json: serde_json::Value = serde_json::from_slice(&o.stdout).unwrap();
+    let ids: Vec<&str> = json
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|c| c["id"].as_str().unwrap())
+        .collect();
+    assert_eq!(ids, ["FR-001", "FR-002"]);
+    assert_eq!(json[0]["change"], "added");
+
+    // Unknown reference: exit code 2 and a message.
+    let o = requimd(&dir, &["diff", "no-such-tag"]);
+    assert_eq!(o.status.code(), Some(2));
+    assert!(String::from_utf8_lossy(&o.stderr).contains("unknown git reference \"no-such-tag\""));
+}
