@@ -8,8 +8,8 @@ use std::ops::Range;
 use lsp_types::{
     CodeAction, CodeActionKind, CodeActionOrCommand, CodeLens, Command, CompletionItem,
     CompletionItemKind, CompletionList, CompletionTextEdit, DocumentSymbol, Hover, HoverContents,
-    InlayHint, InlayHintLabel, Location, MarkupContent, MarkupKind, OneOf, SymbolKind, TextEdit,
-    Uri, WorkspaceEdit, WorkspaceSymbol,
+    InlayHint, InlayHintLabel, Location, MarkupContent, MarkupKind, OneOf, SemanticToken,
+    SemanticTokens, SymbolKind, TextEdit, Uri, WorkspaceEdit, WorkspaceSymbol,
 };
 use requimd_core::config::{IMPL, STEP, USECASE};
 use requimd_core::parse::{code_ranges, key_colon, parse_target};
@@ -518,6 +518,118 @@ pub fn code_lenses(ctx: &Ctx, file: FileId) -> Vec<CodeLens> {
         }
     }
     out
+}
+
+/// FR-216: token types, standard LSP types so editors colour them without
+/// configuration. Indexes into this list are the `TOKEN_*` constants.
+pub const TOKEN_TYPES: [&str; 5] = ["class", "enumMember", "property", "namespace", "keyword"];
+const TOKEN_ID: u32 = 0;
+const TOKEN_STEP: u32 = 1;
+const TOKEN_KEY: u32 = 2;
+const TOKEN_TERM: u32 = 3;
+const TOKEN_FINDING: u32 = 4;
+
+/// FR-216: token modifiers; bit `n` is entry `n`.
+pub const TOKEN_MODIFIERS: [&str; 4] = ["declaration", "weakWord", "modalVerb", "glossaryAlias"];
+const MOD_DECLARATION: u32 = 1;
+
+/// FR-216: language checks whose findings are highlighted, in the order of
+/// their modifiers after `declaration`.
+pub const TOKEN_CHECKS: [&str; 3] = ["weak-word", "modal-verb", "glossary-alias"];
+
+/// FR-216: semantic tokens of one file. `findings` are the spans of the
+/// language check diagnostics of the file, with their check IDs, so
+/// highlighting agrees with the diagnostics (FR-119, FR-117).
+pub fn semantic_tokens(
+    ctx: &Ctx,
+    file: FileId,
+    findings: &[(Range<usize>, &str)],
+) -> SemanticTokens {
+    let p = ctx.project;
+    // (span, type, modifiers, priority); on overlap the higher priority wins.
+    let mut tokens: Vec<(Range<usize>, u32, u32, u8)> = Vec::new();
+    for item in p.items.iter().filter(|it| it.file == file) {
+        tokens.push((item.id_span.clone(), TOKEN_ID, MOD_DECLARATION, 3));
+        for pair in item.meta.iter().filter(|m| m.known) {
+            tokens.push((pair.key_span.clone(), TOKEN_KEY, 0, 3));
+        }
+        for r in item
+            .links
+            .iter()
+            .map(|l| &l.reference)
+            .chain(&item.mentions)
+        {
+            tokens.push((r.span.clone(), TOKEN_ID, 0, 3));
+        }
+        for field in &item.fields {
+            tokens.push((field.key_span.clone(), TOKEN_KEY, 0, 3));
+        }
+        for step in &item.steps {
+            tokens.push((step.label_span.clone(), TOKEN_STEP, MOD_DECLARATION, 3));
+        }
+    }
+    for (span, check) in findings {
+        let Some(n) = TOKEN_CHECKS.iter().position(|c| c == check) else {
+            continue;
+        };
+        tokens.push((span.clone(), TOKEN_FINDING, 1 << (n + 1), 2));
+    }
+    for span in requimd_checks::glossary_terms(p, file) {
+        tokens.push((span, TOKEN_TERM, 0, 1));
+    }
+
+    // Tokens must not overlap: keep the highest priority, then the earliest.
+    tokens.sort_by_key(|t| (std::cmp::Reverse(t.3), t.0.start));
+    let mut kept: Vec<(Range<usize>, u32, u32, u8)> = Vec::new();
+    for t in tokens {
+        if t.0.is_empty()
+            || kept
+                .iter()
+                .any(|k| k.0.start < t.0.end && t.0.start < k.0.end)
+        {
+            continue;
+        }
+        kept.push(t);
+    }
+    kept.sort_by_key(|t| t.0.start);
+
+    let (Some(index), text) = (ctx.index(file), ctx.text(file)) else {
+        return SemanticTokens::default();
+    };
+    let mut data = Vec::new();
+    let (mut prev_line, mut prev_start) = (0, 0);
+    for (span, ty, mods, _) in kept {
+        // One token per line: a phrase may wrap (FR-110).
+        let mut start = span.start;
+        for piece in text.get(span.clone()).unwrap_or_default().split('\n') {
+            let indent = piece.len() - piece.trim_start().len();
+            let end = start + piece.trim_end().len();
+            let r = index.range(&(start + indent..end.max(start + indent)));
+            start += piece.len() + 1;
+            let length = r.end.character.saturating_sub(r.start.character);
+            if length == 0 {
+                continue;
+            }
+            let delta_line = r.start.line - prev_line;
+            let delta_start = if delta_line == 0 {
+                r.start.character - prev_start
+            } else {
+                r.start.character
+            };
+            data.push(SemanticToken {
+                delta_line,
+                delta_start,
+                length,
+                token_type: ty,
+                token_modifiers_bitset: mods,
+            });
+            (prev_line, prev_start) = (r.start.line, r.start.character);
+        }
+    }
+    SemanticTokens {
+        result_id: None,
+        data,
+    }
 }
 
 /// The ID under the cursor that a rename would change, and its span here.
@@ -1270,6 +1382,136 @@ mod tests {
             "{}",
             m.value
         );
+    }
+
+    /// Semantic tokens as (text, type, modifiers), with absolute positions.
+    fn decode(
+        p: &Project,
+        f: FileId,
+        tokens: &SemanticTokens,
+    ) -> Vec<(String, String, Vec<String>)> {
+        let lines: Vec<&str> = p.files[f].text.split('\n').collect();
+        let (mut line, mut col) = (0, 0);
+        let mut out = Vec::new();
+        for t in &tokens.data {
+            if t.delta_line > 0 {
+                col = 0;
+            }
+            line += t.delta_line as usize;
+            col += t.delta_start as usize;
+            // The test texts are ASCII, so UTF-16 columns are byte columns.
+            let text = lines[line][col..col + t.length as usize].to_string();
+            let mods = (0..TOKEN_MODIFIERS.len())
+                .filter(|n| t.token_modifiers_bitset & (1 << n) != 0)
+                .map(|n| TOKEN_MODIFIERS[n].to_string())
+                .collect();
+            out.push((text, TOKEN_TYPES[t.token_type as usize].to_string(), mods));
+        }
+        out
+    }
+
+    #[test]
+    fn fr_216_semantic_tokens() {
+        let files = [
+            ("uc.md", UC),
+            (
+                "a.md",
+                "## FR-100 Fast export\nimpl: UC-012.s1  prio: must\n\nThe system should put it in the shopping cart or the cart as\n  needed, see FR-104 and `FR-999`.\n",
+            ),
+            ("g.md", "## Cart\nalias: shopping cart\n\nItems.\n"),
+        ];
+        let files = files
+            .iter()
+            .map(|(n, t)| {
+                SourceFile::new(std::env::temp_dir().join(n), n.to_string(), t.to_string())
+            })
+            .collect();
+        let config = Config::from_toml("[project]\nglossary = \"g.md\"\n", None).unwrap();
+        let p = Project::from_files(PathBuf::from("."), config, files);
+        let uris = HashMap::new();
+        let c = ctx(&p, &uris);
+        let findings = |f: FileId| -> Vec<(Range<usize>, &'static str)> {
+            requimd_checks::check(&p)
+                .into_iter()
+                .filter(|d| d.file == f && TOKEN_CHECKS.contains(&d.check))
+                .map(|d| (d.span, d.check))
+                .collect()
+        };
+        let tok = |text: &str, ty: &str, mods: &[&str]| {
+            (
+                text.to_string(),
+                ty.to_string(),
+                mods.iter().map(|m| m.to_string()).collect::<Vec<_>>(),
+            )
+        };
+
+        let a = file(&p, "a.md");
+        let got = decode(&p, a, &semantic_tokens(&c, a, &findings(a)));
+        assert_eq!(
+            got,
+            [
+                tok("FR-100", "class", &["declaration"]),
+                tok("Fast", "keyword", &["weakWord"]),
+                tok("impl", "property", &[]),
+                tok("UC-012.s1", "class", &[]),
+                tok("prio", "property", &[]),
+                tok("should", "keyword", &["modalVerb"]),
+                // The alias wins over the term "cart" inside it.
+                tok("shopping cart", "keyword", &["glossaryAlias"]),
+                tok("cart", "namespace", &[]),
+                // A phrase over a line break: one token per line.
+                tok("as", "keyword", &["weakWord"]),
+                tok("needed", "keyword", &["weakWord"]),
+                tok("FR-104", "class", &[]),
+                // `FR-999` is code (FR-009): no token.
+            ]
+        );
+
+        let uc = file(&p, "uc.md");
+        let got = decode(&p, uc, &semantic_tokens(&c, uc, &findings(uc)));
+        assert_eq!(
+            got,
+            [
+                tok("UC-012", "class", &["declaration"]),
+                tok("actor", "property", &[]),
+                tok("prio", "property", &[]),
+                tok("s1", "enumMember", &["declaration"]),
+                tok("cart", "namespace", &[]),
+                tok("s2", "enumMember", &["declaration"]),
+            ]
+        );
+    }
+
+    #[test]
+    fn fr_216_allowed_and_disabled_findings_not_highlighted() {
+        // "Fast" is allowed by the marker (FR-119); "should" is reported
+        // unless the check is off (FR-117).
+        let text = "## FR-300 Fast <!-- requimd: allow fast -->\n\nIt should work.\n";
+        for (toml, expected) in [
+            ("", &["should"][..]),
+            ("[checks]\nmodal-verb = \"off\"\n", &[]),
+        ] {
+            let files = vec![SourceFile::new(
+                std::env::temp_dir().join("w.md"),
+                "w.md".into(),
+                text.into(),
+            )];
+            let config = Config::from_toml(toml, None).unwrap();
+            let p = Project::from_files(PathBuf::from("."), config, files);
+            let uris = HashMap::new();
+            let c = ctx(&p, &uris);
+            let findings: Vec<(Range<usize>, &str)> = requimd_checks::check(&p)
+                .into_iter()
+                .filter(|d| TOKEN_CHECKS.contains(&d.check))
+                .map(|d| (d.span, d.check))
+                .collect();
+            let words: Vec<String> = decode(&p, 0, &semantic_tokens(&c, 0, &findings))
+                .into_iter()
+                .filter(|t| t.1 == "keyword")
+                .map(|t| t.0)
+                .collect();
+            assert_eq!(words, expected, "{toml}");
+        }
     }
 
     #[test]

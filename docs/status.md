@@ -51,11 +51,17 @@ As of 2026-10-12. Update this file at the end of every working session.
   Linux (musl), macOS (arm64, x86_64) and Windows (static CRT) on a version
   tag and attaches them to a GitHub release (NFR-005). CI uploads this
   repository's site as artifact `requimd-site`. Open: first release tag.
+- **FR-216 Semantic tokens: done** (after M5, moved ahead by the owner).
+  Item IDs, references, keys, step labels, glossary terms and the findings
+  of the weak-word, modal-verb and glossary-alias checks, as standard LSP
+  token types (`docs/neovim.md`, "Highlighting"). Passes in Neovim 0.12.6.
 
 ## Decision log
 
 | Date | Decision | Where recorded |
 |------|----------|----------------|
+| 2026-10-12 | FR-216 before FR-403/FR-404; adds step labels, body fields, glossary terms, modal verbs and aliases; EARS keywords move to FR-112 | FR-216, FR-112, `docs/roadmap.md` |
+| 2026-10-12 | Weak words, modal verbs and aliases are highlighted only where a diagnostic is reported | FR-216 |
 | 2026-10-12 | No Confluence: FR-405 deprecated; stakeholders get PDFs from an external Markdown-to-PDF converter | FR-405 |
 | 2026-10-12 | Site shows all items with status badge, `--status` filters; no JavaScript | FR-400 |
 | 2026-10-12 | Traceability matrix: one row per step with implementing and verifying items | FR-401 |
@@ -153,6 +159,13 @@ As of 2026-10-12. Update this file at the end of every working session.
    - Weak words are checked in types `functional` and `quality`, modal
      verbs and "no shall" in `functional`, the story pattern in `story`:
      fixed type names, like `usecase` for steps.
+8. **Interpretations in FR-216 to confirm:**
+   - Glossary terms are matched like weak words (FR-110): not in code,
+     quoted text or IDs. The glossary file itself gets no tokens.
+   - Where tokens overlap, keys, IDs and step labels win over findings,
+     findings over glossary terms (an alias "shopping cart" hides the term
+     "cart" inside it).
+   - Unknown metadata keys are not highlighted as keys.
 
 ### Technical
 
@@ -163,7 +176,7 @@ As of 2026-10-12. Update this file at the end of every working session.
 ## Next steps
 
 1. Owner: try M3 and M4 in Neovim (`docs/neovim.md`) and review the open
-   interpretations above (business questions 5 to 7).
+   interpretations above (business questions 5 to 8).
 2. Alpha release `v0.1.0-alpha.1` (version in `Cargo.toml`): push the
    tag, check the release job and the four archives, then review and test
    the tool on a real project. Further rounds: bump to `-alpha.2` etc.;

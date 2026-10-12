@@ -8,6 +8,8 @@ use std::ops::Range;
 
 mod language;
 
+pub use language::glossary_terms;
+
 use requimd_core::config::{IMPL, REF, STEP, USECASE};
 use requimd_core::lock::{link_key, target_hash};
 use requimd_core::{Diagnostic, FileId, Item, Level, Project, Reference, Resolution, Severity};

@@ -153,6 +153,22 @@ check('FR-219 allow in project', allow ~= nil and cleared
   and toml:find('# my comment', 1, true) ~= nil and toml:find('allow = ["fast"]', 1, true) ~= nil, toml)
 vim.api.nvim_set_current_buf(buf)
 
+-- FR-216: Neovim applies the semantic tokens without configuration.
+local function token_at(row, col)
+  local t
+  vim.wait(5000, function()
+    t = vim.lsp.semantic_tokens.get_at_pos(buf, row, col)
+    return t and #t > 0
+  end, 20)
+  return t and t[1] or {}
+end
+local decl = token_at(2, 4) -- "## FR-101 Show cart"
+check('FR-216 tokens: heading ID', decl.type == 'class' and decl.modifiers.declaration == true, decl.type)
+check('FR-216 tokens: metadata key', token_at(3, 1).type == 'property', token_at(3, 1).type)
+check('FR-216 tokens: reference', token_at(3, 8).type == 'class', token_at(3, 8).type)
+-- Line 6 (1-based): "When the customer opens the cart, ..."
+check('FR-216 tokens: glossary term', token_at(5, 30).type == 'namespace', token_at(5, 30).type)
+
 -- M4: saving records links (FR-218), a changed target makes the link
 -- suspect (FR-116), and the code action marks it as reviewed.
 local m4 = vim.fn.tempname()

@@ -64,6 +64,7 @@ nvim --headless --clean -l scripts/nvim-check.lua target/release/requimd
 | Create stub | FR-213 | `gra` on a dangling reference or an uncovered step | M3 |
 | Rename | FR-214 | `grn` on an item ID | M3 |
 | Code lens | FR-215 | `:lua vim.lsp.codelens.run()` on a step | M3 |
+| Semantic tokens | FR-216 | automatic (see "Highlighting" below) | after M5 |
 | Language check actions | FR-219 | `gra` on a weak word, modal verb or alias, or on any word | M3 |
 | Suspect links | FR-116 | diagnostics; links are recorded in `requimd.lock` on save (FR-218) | M4 |
 | Mark as reviewed | FR-218 | `gra` on a suspect link | M4 |
@@ -81,3 +82,32 @@ it first. "Add to weak words" then opens it at the new entry; type the
 reason between the quotes of `why`.
 
 Verify key defaults with `:help lsp-defaults` in your Neovim version.
+
+## Highlighting
+
+The server sends semantic tokens (FR-216); Neovim applies them without
+configuration. The token types are standard LSP types, so every colour
+scheme colours them:
+
+| Text | Token type | Modifier | Default group |
+|------|------------|----------|---------------|
+| Item ID in a heading | `class` | `declaration` | `@type` |
+| Reference (link or mention) | `class` | | `@type` |
+| Step label | `enumMember` | `declaration` | `@constant` |
+| Metadata key, body field key | `property` | | `@property` |
+| Glossary term | `namespace` | | `@module` |
+| Weak word | `keyword` | `weakWord` | `@keyword` |
+| Modal verb | `keyword` | `modalVerb` | `@keyword` |
+| Glossary alias | `keyword` | `glossaryAlias` | `@keyword` |
+
+Weak words, modal verbs and aliases are highlighted exactly where a
+diagnostic is reported: allowed words and disabled checks stay plain.
+Other colours are set per type or per type and modifier, for example:
+
+```lua
+vim.api.nvim_set_hl(0, '@lsp.typemod.keyword.weakWord.markdown', { link = 'DiagnosticWarn' })
+vim.api.nvim_set_hl(0, '@lsp.type.namespace.markdown', { italic = true })
+```
+
+`:Inspect` on a word shows its tokens. `vim.lsp.semantic_tokens.enable(false)`
+switches highlighting off.

@@ -7,7 +7,7 @@ use std::ops::Range;
 
 use requimd_core::config::{ALLOW_CHECKS, FUNCTIONAL, QUALITY, STORY};
 use requimd_core::words::{Phrases, find_phrase, ignored_ranges, markers, overlaps};
-use requimd_core::{Item, Project, Severity};
+use requimd_core::{FileId, Item, Project, Severity};
 
 use crate::Out;
 
@@ -71,6 +71,63 @@ impl Lists {
     }
 }
 
+/// Code ranges of one item.
+fn item_code(p: &Project, item: &Item) -> Vec<Range<usize>> {
+    p.code
+        .get(item.file)
+        .into_iter()
+        .flatten()
+        .filter(|r| r.end > item.heading.start && r.start < item.body.end)
+        .cloned()
+        .collect()
+}
+
+/// Title and text of an item: the regions the language checks read.
+fn regions(item: &Item) -> [Range<usize>; 2] {
+    [
+        item.id_span.end..item.heading.end,
+        item.meta_span.end..item.body.end,
+    ]
+}
+
+/// Ranges of a region that word matching skips: code, quoted text and
+/// item IDs (FR-110).
+fn ignored(
+    text: &str,
+    region: &Range<usize>,
+    code: &[Range<usize>],
+    item: &Item,
+) -> Vec<Range<usize>> {
+    let mut ignored = ignored_ranges(text, region.clone(), code);
+    ignored.extend(code.iter().cloned());
+    ignored.extend(item.mentions.iter().map(|m| m.span.clone()));
+    ignored
+}
+
+/// FR-216: occurrences of glossary terms in the title and text of the items
+/// of `file`, matched by the rules of FR-110.
+pub fn glossary_terms(p: &Project, file: FileId) -> Vec<Range<usize>> {
+    let Some(text) = p.files.get(file).map(|f| f.text.as_str()) else {
+        return Vec::new();
+    };
+    let terms = Phrases::new(p.glossary.iter().map(|t| t.name.as_str()));
+    let mut out = Vec::new();
+    for item in p.items.iter().filter(|it| it.file == file) {
+        let code = item_code(p, item);
+        for region in &regions(item) {
+            let ignored = ignored(text, region, &code, item);
+            out.extend(
+                terms
+                    .find(text, region.clone())
+                    .into_iter()
+                    .map(|(r, _)| r)
+                    .filter(|r| !overlaps(&ignored, r)),
+            );
+        }
+    }
+    out
+}
+
 pub(crate) fn run(out: &mut Out) {
     let p = out.project;
     let lists = Lists::new(p);
@@ -78,28 +135,15 @@ pub(crate) fn run(out: &mut Out) {
         let Some(text) = p.files.get(item.file).map(|f| f.text.as_str()) else {
             continue;
         };
-        // Code ranges of this item only.
-        let code: Vec<Range<usize>> = p
-            .code
-            .get(item.file)
-            .into_iter()
-            .flatten()
-            .filter(|r| r.end > item.heading.start && r.start < item.body.end)
-            .cloned()
-            .collect();
-        let regions = [
-            item.id_span.end..item.heading.end,
-            item.meta_span.end..item.body.end,
-        ];
+        let code = item_code(p, item);
+        let regions = regions(item);
 
         no_shall(out, item, text, &regions[1], &code);
         story(out, item, text, &regions[1]);
 
         let mut occurrences = Vec::new();
         for region in &regions {
-            let mut ignored = ignored_ranges(text, region.clone(), &code);
-            ignored.extend(code.iter().cloned());
-            ignored.extend(item.mentions.iter().map(|m| m.span.clone()));
+            let ignored = ignored(text, region, &code, item);
             let found = |phrases: &Phrases| -> Vec<(Range<usize>, usize)> {
                 phrases
                     .find(text, region.clone())

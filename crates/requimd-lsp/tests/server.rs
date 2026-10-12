@@ -568,6 +568,49 @@ fn fr_116_fr_218_suspect_links_over_protocol() {
 }
 
 /// 2,000 items in 200 files (NFR-001 meter).
+#[test]
+fn fr_216_semantic_tokens_over_protocol() {
+    let fr_text = "## FR-001 Quick cart\nprio: must\n\nThe system shall work.\n";
+    let g_text = "## Cart\n\nItems.\n";
+    let dir = temp_project(
+        "tokens",
+        "[project]\nglossary = \"g.md\"\n",
+        &[("fr.md", fr_text), ("g.md", g_text)],
+    );
+    let caps = json!({ "workspace": { "semanticTokens": { "refreshSupport": true } } });
+    let (mut c, init) = Client::start(&dir, caps);
+    let legend = &init["capabilities"]["semanticTokensProvider"]["legend"];
+    assert_eq!(legend["tokenTypes"][0], "class");
+    assert_eq!(legend["tokenModifiers"][0], "declaration");
+
+    let fr = dir.join("fr.md");
+    let g = dir.join("g.md");
+    c.open(&fr, fr_text);
+    c.open(&g, g_text);
+    let fr_doc = json!({ "textDocument": { "uri": uri(&fr) } });
+    let count = |v: &Value| v["data"].as_array().unwrap().len() / 5;
+    // FR-001, "Quick" (weak word), "cart" (term), "prio".
+    let tokens = c.request("textDocument/semanticTokens/full", fr_doc.clone());
+    assert_eq!(count(&tokens), 4);
+
+    // Moving text in the same file changes no other file's tokens.
+    c.server_requests.clear();
+    c.change(&fr, 2, &format!("\n{fr_text}"));
+    c.request("textDocument/semanticTokens/full", fr_doc.clone());
+    assert!(c.server_requests.is_empty());
+
+    // A new glossary term changes the tokens of fr.md: refresh requested.
+    c.change(&g, 2, "## Cart\n\nItems.\n\n## System\n\nThe software.\n");
+    let tokens = c.request("textDocument/semanticTokens/full", fr_doc);
+    assert_eq!(count(&tokens), 5);
+    assert!(
+        c.server_requests
+            .iter()
+            .any(|r| r.method == "workspace/semanticTokens/refresh")
+    );
+    c.shutdown();
+}
+
 fn generated_project(name: &str) -> PathBuf {
     let mut files = Vec::new();
     for f in 0..200 {

@@ -5,6 +5,7 @@
 //! after a short debounce (NFR-001).
 
 use std::collections::{BTreeMap, HashMap};
+use std::ops::Range;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant, SystemTime};
 
@@ -27,6 +28,10 @@ use lsp_types::{
     WorkDoneProgressOptions,
 };
 use lsp_types::{DidSaveTextDocumentParams, TextDocumentSyncOptions, TextDocumentSyncSaveOptions};
+use lsp_types::{
+    SemanticTokenModifier, SemanticTokenType, SemanticTokensFullOptions, SemanticTokensLegend,
+    SemanticTokensOptions, SemanticTokensParams, SemanticTokensServerCapabilities,
+};
 use requimd_core::config::CONFIG_FILE;
 use requimd_core::lock::{LOCK_FILE, Lock, target_hash};
 use requimd_core::parse::{Parsed, parse, parse_target};
@@ -104,6 +109,19 @@ fn capabilities(encoding: Encoding) -> ServerCapabilities {
         code_lens_provider: Some(CodeLensOptions {
             resolve_provider: Some(false),
         }),
+        semantic_tokens_provider: Some(SemanticTokensServerCapabilities::SemanticTokensOptions(
+            SemanticTokensOptions {
+                legend: SemanticTokensLegend {
+                    token_types: features::TOKEN_TYPES.map(SemanticTokenType::new).to_vec(),
+                    token_modifiers: features::TOKEN_MODIFIERS
+                        .map(SemanticTokenModifier::new)
+                        .to_vec(),
+                },
+                full: Some(SemanticTokensFullOptions::Bool(true)),
+                range: None,
+                work_done_progress_options: WorkDoneProgressOptions::default(),
+            },
+        )),
         rename_provider: Some(OneOf::Right(RenameOptions {
             prepare_provider: Some(true),
             work_done_progress_options: WorkDoneProgressOptions::default(),
@@ -160,6 +178,22 @@ struct Server<'a> {
     dirty_since: Option<Instant>,
     client_watches: bool,
     next_poll: Instant,
+    /// FR-216: language check findings per file, (span, check ID).
+    findings: HashMap<FileId, Vec<(Range<usize>, &'static str)>>,
+    /// FR-216: what other files contribute to a file's tokens; the client
+    /// is asked to refresh its tokens when it changes.
+    token_inputs: TokenInputs,
+    client_token_refresh: bool,
+}
+
+/// FR-216: the inputs of semantic tokens that come from other files than
+/// the one being highlighted, without positions.
+#[derive(Default, PartialEq)]
+struct TokenInputs {
+    /// (file, check, word) of every language check finding.
+    findings: Vec<(String, &'static str, String)>,
+    glossary: Vec<String>,
+    config_modified: Option<SystemTime>,
 }
 
 fn modified(path: &Path) -> Option<SystemTime> {
@@ -175,6 +209,13 @@ impl<'a> Server<'a> {
             .as_ref()
             .and_then(|w| w.did_change_watched_files.as_ref())
             .and_then(|d| d.dynamic_registration)
+            .unwrap_or(false);
+        let client_token_refresh = init
+            .capabilities
+            .workspace
+            .as_ref()
+            .and_then(|w| w.semantic_tokens.as_ref())
+            .and_then(|s| s.refresh_support)
             .unwrap_or(false);
         let mut server = Server {
             conn,
@@ -196,6 +237,9 @@ impl<'a> Server<'a> {
             dirty_since: None,
             client_watches,
             next_poll: Instant::now() + POLL,
+            findings: HashMap::new(),
+            token_inputs: TokenInputs::default(),
+            client_token_refresh,
         };
         if let Some(root) = workspace_root(init).and_then(|p| find_root(&p)) {
             server.set_root(root);
@@ -469,10 +513,30 @@ impl<'a> Server<'a> {
             self.apply_pending_renames();
         }
         let mut by_file: HashMap<FileId, Vec<lsp_types::Diagnostic>> = HashMap::new();
+        self.findings.clear();
+        let mut inputs = TokenInputs {
+            findings: Vec::new(),
+            glossary: self
+                .project
+                .glossary
+                .iter()
+                .map(|t| t.name.clone())
+                .collect(),
+            config_modified: self.config_modified,
+        };
         for d in requimd_checks::check(&self.project) {
             let Some(f) = self.project.files.get(d.file) else {
                 continue;
             };
+            // FR-216: findings the semantic tokens highlight.
+            if features::TOKEN_CHECKS.contains(&d.check) {
+                let word = f.text.get(d.span.clone()).unwrap_or_default().to_string();
+                inputs.findings.push((f.rel.clone(), d.check, word));
+                self.findings
+                    .entry(d.file)
+                    .or_default()
+                    .push((d.span.clone(), d.check));
+            }
             if !self.open.contains_key(&f.rel) {
                 continue;
             }
@@ -514,6 +578,18 @@ impl<'a> Server<'a> {
                 );
             }
             self.published.insert(rel, diags);
+        }
+        // FR-216: tokens of other open files may have changed.
+        if inputs != self.token_inputs {
+            self.token_inputs = inputs;
+            if self.client_token_refresh {
+                let req = Request::new(
+                    RequestId::from("requimd-tokens".to_string()),
+                    "workspace/semanticTokens/refresh".into(),
+                    Value::Null,
+                );
+                let _ = self.conn.sender.send(req.into());
+            }
         }
     }
 
@@ -706,6 +782,7 @@ impl<'a> Server<'a> {
             "textDocument/codeAction" => self.code_actions(req.params),
             "textDocument/inlayHint" => self.inlay_hints(req.params),
             "textDocument/codeLens" => self.code_lenses(req.params),
+            "textDocument/semanticTokens/full" => self.semantic_tokens(req.params),
             "textDocument/prepareRename" => self.prepare_rename(req.params),
             "textDocument/rename" => self.rename(req.params),
             "workspace/executeCommand" => self.execute_command(req.params),
@@ -751,6 +828,20 @@ impl<'a> Server<'a> {
             return Ok(Value::Null);
         };
         serde_json::to_value(features::code_lenses(&self.ctx(), file)).map_err(|e| e.to_string())
+    }
+
+    /// FR-216
+    fn semantic_tokens(&mut self, params: Value) -> Result<Value, String> {
+        let p: SemanticTokensParams = serde_json::from_value(params).map_err(|e| e.to_string())?;
+        let Some(rel) = self.rel_of(&p.text_document.uri) else {
+            return Ok(Value::Null);
+        };
+        let Some(&file) = self.file_ids.get(&rel) else {
+            return Ok(Value::Null);
+        };
+        let findings = self.findings.get(&file).map_or(&[][..], Vec::as_slice);
+        serde_json::to_value(features::semantic_tokens(&self.ctx(), file, findings))
+            .map_err(|e| e.to_string())
     }
 
     /// FR-214

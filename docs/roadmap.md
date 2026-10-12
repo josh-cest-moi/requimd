@@ -53,11 +53,13 @@ Goal: writing and navigating in Neovim 0.12 without plugins.
 
 ## After M5
 
+- FR-216 (semantic tokens): done on 2026-10-12, moved ahead by the product
+  owner; EARS keywords follow with FR-112
 - FR-403 (`requimd diff`) and FR-404 (Mermaid export), in separate commits
 
 ## Later / ideas
 
-- FR-112 (EARS detection), FR-216 (semantic tokens)
+- FR-112 (EARS detection, with EARS keyword highlighting)
 - Issue tracker links (e.g. `jira: SHOP-412`)
 - Import of test results so test items show pass/fail
 - On-demand AI review for ambiguity and contradictions (stage 3, ADR-0005)
