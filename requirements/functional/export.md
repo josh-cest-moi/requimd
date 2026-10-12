@@ -53,7 +53,22 @@ example on an unknown reference.
 impl: UC-006.s2  prio: could
 
 The system shall export the links of a given item and its neighbours as a
-Mermaid diagram.
+Mermaid diagram with `requimd export mermaid <ID>`. It prints a Mermaid
+flowchart in a Markdown code block, or writes it to a file with `-o`.
+
+Neighbours are the items that link to or mention the item and the items it
+links to or mentions. With `--depth <n>` (default 1) the system follows
+references up to n steps away. The diagram shows:
+
+- each item with its ID, title and status, styled by status, and the given
+  item highlighted;
+- every link between the shown items as an arrow labelled with the link
+  name, and every mention as a dashed arrow;
+- a use case as a box containing the steps that shown links point to.
+
+For a step reference, the diagram starts at its use case. Exit codes are
+those of FR-305: 1 if the ID does not exist or is declared more than once,
+2 if the argument is no item ID or step reference.
 
 ## FR-405 Publishing target
 impl: UC-006.s3  prio: could  status: deprecated
