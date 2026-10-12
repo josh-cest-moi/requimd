@@ -217,11 +217,11 @@ As of 2026-10-13. Update this file at the end of every working session.
 
 1. Owner: try M3 and M4 in Neovim (`docs/neovim.md`) and review the open
    interpretations above (business questions 5 to 12).
-2. Alpha release `v0.1.0-alpha.1` (version in `Cargo.toml`): push the
-   tag, check the release job and the four archives, then review and test
-   the tool on a real project. Further rounds: bump to `-alpha.2` etc.;
-   `v0.1.0` when the reviews are done. Test builds without publishing:
-   Actions → Release → Run workflow.
+2. Alpha release `v0.1.0-alpha.2` (FR-216, FR-403, FR-404 since
+   alpha.1): check the release job and the four archives, then review and
+   test the tool on a real project. Further rounds: bump to `-alpha.3`
+   etc.; `v0.1.0` when the reviews are done. Test builds without
+   publishing: Actions → Release → Run workflow.
 3. Later: publish the site on GitHub Pages; FR-112 (EARS) and the other
    ideas in `docs/roadmap.md`.
 
