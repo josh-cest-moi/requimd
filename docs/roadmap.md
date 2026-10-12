@@ -62,9 +62,38 @@ Goal: writing and navigating in Neovim 0.12 without plugins.
 
 - FR-112 (EARS detection, with EARS keyword highlighting)
 - Issue tracker links (e.g. `jira: SHOP-412`)
-- Import of test results so test items show pass/fail
+- Test suite integration: import results (JUnit XML covers most
+  frameworks) so test items show pass/fail, e.g. on the site; open: the
+  lifecycle of tests and how automated tests are matched to items (test
+  names or annotations with IDs)
+- Editor integrations: a VS Code extension that starts `requimd lsp`
+  (Marketplace and Open VSX); for IntelliJ first a setup guide for the
+  LSP4IJ plugin, a dedicated plugin only on demand
 - On-demand AI review for ambiguity and contradictions (stage 3, ADR-0005)
 - Further pattern rules: comparatives without reference, passive voice
   without actor
 - Show what changed in the target of a suspect link, from git history
   (ADR-0007)
+- Suspect links in highlighting: a `suspect` modifier on references
+  (extension of FR-216, like `weakWord`), so editors can colour them
+  separately from other warnings
+- Glossary entry stub: as an analyst, I can select a word or phrase and
+  create a glossary entry stub for it (code action, like "Add to weak
+  words" in FR-219)
+- Design layer: architecture decisions (ADRs) and other decision entries
+  as items, with links to the requirements they answer, so decisions take
+  part in tracing, suspect links and the site
+- Unverified requirements: a check on functional requirements and stories
+  that no item links to with `ver`. Verification is not only by tests:
+  review, demonstration or analysis records count too (see the open
+  question on verification methods in `docs/status.md`)
+- Glossary navigation: go to definition on a glossary term or alias jumps
+  to its entry; find references lists every use of the term and its
+  aliases (today terms have hover only)
+- Near-miss IDs: a warning on headings such as `## FR-12 Title` that look
+  like an item but are none (too few digits, BR-001)
+- Changelog on the site: `requimd export site --since <ref>` adds a page
+  "changed since <ref>" built from `requimd diff` (FR-403)
+- Unused glossary terms: an info diagnostic on terms that no item uses
+- `requimd export mermaid --plain`: the diagram without the Markdown code
+  block, for piping into mermaid-cli (`mmdc`)

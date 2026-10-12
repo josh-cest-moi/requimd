@@ -1,6 +1,6 @@
 # Project status
 
-As of 2026-10-12. Update this file at the end of every working session.
+As of 2026-10-13. Update this file at the end of every working session.
 
 ## State
 
@@ -195,6 +195,17 @@ As of 2026-10-12. Update this file at the end of every working session.
     - Status colours: draft dashed border, review yellow, approved green,
       deprecated grey; other configured values are not styled.
     - Step text is cut at 50 characters.
+11. **Verification methods (idea "unverified requirements",
+    `docs/roadmap.md`):** besides tests, which kinds of verification
+    record should count (review, demonstration, analysis), and should a
+    requirement state its expected method (e.g. `verify: test`)?
+12. **Scope: design between requirements and tests?** Decides the test
+    lifecycle and test suite integration (`docs/roadmap.md`). Options:
+    (1) requirements only, tests verify requirements; (2) plus decisions
+    (ADRs) as items linked to requirements, tests still verify
+    requirements; (3) full V-model with design items and tests per level.
+    Proposal: option 2. Once decided: ADR-0008 and an update of the scope
+    in `requirements/vision.md`.
 
 ### Technical
 
@@ -205,7 +216,7 @@ As of 2026-10-12. Update this file at the end of every working session.
 ## Next steps
 
 1. Owner: try M3 and M4 in Neovim (`docs/neovim.md`) and review the open
-   interpretations above (business questions 5 to 10).
+   interpretations above (business questions 5 to 12).
 2. Alpha release `v0.1.0-alpha.1` (version in `Cargo.toml`): push the
    tag, check the release job and the four archives, then review and test
    the tool on a real project. Further rounds: bump to `-alpha.2` etc.;
