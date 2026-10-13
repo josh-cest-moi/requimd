@@ -64,11 +64,18 @@ As of 2026-10-13. Update this file at the end of every working session.
   [-o file]` (CLI module `export/mermaid.rs`): Mermaid flowchart in a
   Markdown code block. Rendering checked with Mermaid 11.4 in a browser.
   All `could` items after M5 are done.
+- **M6 Editor integrations: specified** (2026-10-13). FR-500 to FR-504,
+  NFR-011, UC-007.s2a and s2b, ADR-0008 (proposed). Not implemented yet.
 
 ## Decision log
 
 | Date | Decision | Where recorded |
 |------|----------|----------------|
+| 2026-10-13 | Work goes through GitHub pull requests; the owner merges | `CLAUDE.md` |
+| 2026-10-13 | New milestone M6 Editor integrations; new ID range FR 500–599 | `docs/roadmap.md`, `requirements/README.md` |
+| 2026-10-13 | VS Code extension with the binary bundled per platform; `.vsix` packages on GitHub Releases only, Marketplace and Open VSX later | FR-500 to FR-502, ADR-0008 |
+| 2026-10-13 | IntelliJ: setup guide for LSP4IJ, dedicated plugin only on demand | FR-504, ADR-0008 |
+| 2026-10-13 | VS Code `must`, IntelliJ guide `should` | FR-500 to FR-504 |
 | 2026-10-12 | Mermaid diagram as `requimd export mermaid <ID>`, Markdown code block, direct neighbours by default, `--depth` for more; steps inside their use case, mentions dashed, status per node | FR-404 |
 | 2026-10-12 | `requimd diff` calls the `git` command, no git library (NFR-005) | FR-403 |
 | 2026-10-12 | `requimd diff <ref>` compares with the working tree, including uncommitted changes | FR-403 |
@@ -204,8 +211,10 @@ As of 2026-10-13. Update this file at the end of every working session.
     (1) requirements only, tests verify requirements; (2) plus decisions
     (ADRs) as items linked to requirements, tests still verify
     requirements; (3) full V-model with design items and tests per level.
-    Proposal: option 2. Once decided: ADR-0008 and an update of the scope
+    Proposal: option 2. Once decided: a new ADR and an update of the scope
     in `requirements/vision.md`.
+13. **ADR-0008 Editor integrations:** proposed; accept it in the review of
+    the spec PR.
 
 ### Technical
 

@@ -41,7 +41,9 @@ scale: number of files a user must install
 meter: follow the installation guide on a clean machine
 must: 1
 
-The tool ships as a single executable without a runtime to install.
+The tool ships as a single executable without a runtime to install. In VS
+Code, the extension package is this one file; it contains the executable
+(FR-501).
 
 ## NFR-006 Offline operation
 prio: must
@@ -55,7 +57,9 @@ scale: share of `must` language server features usable in Neovim 0.12 with its b
 meter: manual test per feature, documented in `docs/neovim.md`
 must: 100 %
 
-Only standard LSP features are used; nothing requires an editor plugin.
+Only standard LSP features are used; nothing requires an editor plugin
+beyond a generic LSP client. Editors without such a client get one from an
+editor integration, such as the VS Code extension of FR-500.
 
 ## NFR-008 Plain Markdown readability
 prio: must
@@ -73,4 +77,10 @@ must: 0
 prio: must
 scale: share of `must` requirements of a completed milestone with at least one test whose name contains the requirement ID
 meter: script that matches test names against requirement IDs
+must: 100 %
+
+## NFR-011 VS Code feature coverage
+ref: FR-500  prio: must
+scale: share of `must` language server features usable in VS Code with the extension of FR-500 and no other configuration
+meter: automated test in VS Code, run in CI
 must: 100 %
