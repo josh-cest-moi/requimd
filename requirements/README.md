@@ -10,7 +10,8 @@ It is both the spec and the first real test case for the tool.
 3. `usecases/` – what users do with the tool
 4. `rules.md` – business rules (BR)
 5. `functional/format.md` – the file format, normative
-6. `functional/checks.md`, `lsp.md`, `cli.md`, `export.md` – behaviour
+6. `functional/checks.md`, `lsp.md`, `cli.md`, `export.md`, `editors.md` –
+   behaviour
 7. `quality.md` – quality requirements (NFR)
 
 ## ID ranges
@@ -24,6 +25,7 @@ It is both the spec and the first real test case for the tool.
 | FR | 200–299 | Language server |
 | FR | 300–399 | CLI |
 | FR | 400–499 | Export and reporting |
+| FR | 500–599 | Editor integrations |
 | NFR | 001– | Quality requirements |
 
 ## Status and priority

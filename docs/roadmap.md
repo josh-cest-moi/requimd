@@ -58,6 +58,15 @@ Goal: writing and navigating in Neovim 0.12 without plugins.
 - FR-403 (`requimd diff`): done on 2026-10-12
 - FR-404 (`requimd export mermaid`): done on 2026-10-12
 
+## M6 Editor integrations
+
+Goal: requimd in VS Code with one installation, and in IntelliJ IDEA with a
+guide. Decisions: ADR-0008.
+
+- VS Code: FR-500 to FR-503, NFR-011; `.vsix` packages per platform on
+  GitHub Releases, built with the binaries
+- IntelliJ: FR-504, setup guide for LSP4IJ
+
 ## Later / ideas
 
 - FR-112 (EARS detection, with EARS keyword highlighting)
@@ -66,9 +75,9 @@ Goal: writing and navigating in Neovim 0.12 without plugins.
   frameworks) so test items show pass/fail, e.g. on the site; open: the
   lifecycle of tests and how automated tests are matched to items (test
   names or annotations with IDs)
-- Editor integrations: a VS Code extension that starts `requimd lsp`
-  (Marketplace and Open VSX); for IntelliJ first a setup guide for the
-  LSP4IJ plugin, a dedicated plugin only on demand
+- VS Code extension in the Marketplace and Open VSX (needs publisher
+  accounts of the owner; ADR-0008)
+- Dedicated IntelliJ plugin, only on demand (ADR-0008)
 - On-demand AI review for ambiguity and contradictions (stage 3, ADR-0005)
 - Further pattern rules: comparatives without reference, passive voice
   without actor

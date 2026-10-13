@@ -2,8 +2,8 @@
 
 [ids]
 BR = 5
-FR = 405
-NFR = 10
+FR = 504
+NFR = 11
 UC = 7
 
 [links]
@@ -91,9 +91,15 @@ UC = 7
 "FR-403 impl UC-006.s2" = "00b41f36c5067b7d"
 "FR-404 impl UC-006.s2" = "00b41f36c5067b7d"
 "FR-405 impl UC-006.s3" = "90198b785d306dee"
+"FR-500 impl UC-007.s2a" = "e626081220c4cb64"
+"FR-501 ref FR-500" = "be7a6ba2a541e2d5"
+"FR-502 ref FR-501" = "a13596e30b16ecde"
+"FR-503 ref FR-216" = "f631ad9163e74e82"
+"FR-504 impl UC-007.s2b" = "b6598e0a9773cc6a"
 "NFR-001 ref FR-202" = "850f80058628c2f7"
 "NFR-002 ref FR-300" = "27af637c870be91d"
 "NFR-003 ref FR-200" = "500d347f9db994fe"
-"NFR-005 ref UC-007" = "c24bfe3229e65bfe"
+"NFR-005 ref UC-007" = "1f4863128275e805"
 "NFR-007 impl UC-007.s2" = "a4f30596853f6fc6"
 "NFR-009 ref FR-012" = "90e37d3a29f9a4c5"
+"NFR-011 ref FR-500" = "be7a6ba2a541e2d5"
