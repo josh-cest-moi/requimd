@@ -67,8 +67,12 @@ and merges; merging is the owner's approval.
   only then is the status set to "accepted", before the merge.
 - The PR description lists the requirement IDs touched, spec changes, open
   questions and how the change was verified.
-- Merge with a merge commit or rebase, not squash, so spec and
-  implementation commits stay separate.
+- History stays linear: PRs are merged with "Rebase and merge", never
+  squashed, so spec and implementation commits stay separate. Before the
+  merge, rebase the branch onto the current `main`
+  (`git fetch && git rebase origin/main`), resolve conflicts (often
+  `requimd.lock` and `docs/status.md`), run the checks again and push with
+  `git push --force-with-lease`. Force-pushing your own branch is allowed.
 - Do not use the `gh` CLI. Push the branch and give the owner the link to
   create the PR, with a title and description ready to paste.
 
