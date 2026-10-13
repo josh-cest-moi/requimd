@@ -40,6 +40,42 @@ pulldown-cmark and LSP library lsp-server (ADR-0003, accepted 2026-10-10).
   these files win over examples elsewhere.
 - `docs/roadmap.md` defines milestones; `docs/decisions/` records decisions.
 
+## Workflow: pull requests
+
+All changes reach `main` through pull requests on GitHub. The owner reviews
+and merges; merging is the owner's approval.
+
+- Never commit or push to `main`, never force-push `main`, never merge.
+  Commit and push only on your own branch.
+- One PR per unit of work: one outcome the owner can review in one sitting.
+  After the merge, `main` is still green and `requimd check` passes.
+- Branch from an up-to-date `main`, with a prefix for the kind of unit:
+
+  | Prefix | Unit |
+  |---|---|
+  | `feature/` | a user-visible capability, possibly several requirements |
+  | `spec/` | requirement changes only, no code |
+  | `decision/` | a new or superseding ADR |
+  | `fix/` | a bug fix with a regression test |
+  | `docs/` | guides, roadmap, examples |
+  | `chore/` | CI, dependencies, tooling, refactoring without behaviour change |
+  | `release/` | version bump and release preparation |
+
+- Larger features: a `spec/` PR first, then the `feature/` PR. Small
+  changes: the spec commit and the implementation commit in one PR.
+- An ADR in a PR has status "proposed". The owner accepts it in the review;
+  only then is the status set to "accepted", before the merge.
+- The PR description lists the requirement IDs touched, spec changes, open
+  questions and how the change was verified.
+- History stays linear: PRs are merged with "Rebase and merge", never
+  squashed, so spec and implementation commits stay separate. Before the
+  merge, rebase the branch onto the current `main`
+  (`git fetch && git rebase origin/main`), resolve conflicts (often
+  `requimd.lock` and `docs/status.md`), run the checks again and push with
+  `git push --force-with-lease`. Force-pushing your own branch is allowed.
+- Do not use the `gh` CLI. Push the branch and give the owner the link to
+  create the PR, with a title and description ready to paste.
+
 ## Working rules
 
 - Implement against requirement IDs. Put the ID in test names, in a comment
@@ -47,7 +83,7 @@ pulldown-cmark and LSP library lsp-server (ADR-0003, accepted 2026-10-10).
   (`FR-006: parse use case steps`).
 - If a requirement is ambiguous, incomplete, or contradicts another, stop and
   ask. Do not silently interpret. Propose changes to requirement files as a
-  separate commit and list them in your summary.
+  separate commit and list them in the PR description.
 - Never set `status: approved` on an item (BR-004). You may propose `review`.
 - Never renumber item IDs or step labels (BR-002, BR-003). New items get the
   next free number in their range (see `requirements/README.md`).
@@ -77,7 +113,7 @@ pulldown-cmark and LSP library lsp-server (ADR-0003, accepted 2026-10-10).
 ## Conventions
 
 - Keep dependencies few; the tool ships as a single binary (NFR-005).
-- At the end of a session, update `docs/status.md` (state, decision log,
-  open questions).
+- Update `docs/status.md` (state, decision log, open questions) in the PR
+  whose change it describes.
 - CLI diagnostic output follows FR-300.
 - No network access at runtime (NFR-006).
