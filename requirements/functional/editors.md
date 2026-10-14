@@ -31,8 +31,8 @@ guide shall describe how to install such a package in VS Code.
 ref: FR-216  prio: should
 
 The VS Code extension shall declare the semantic token modifiers of FR-216
-and map them to theme colours, so that weak words, modal verbs and glossary
-aliases are highlighted without user configuration.
+and map them to theme styles, so that weak words, modal verbs and glossary
+aliases are highlighted without user configuration in every theme.
 
 ## FR-504 IntelliJ setup guide
 impl: UC-007.s2b  prio: should
