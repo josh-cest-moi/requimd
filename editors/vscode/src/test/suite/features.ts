@@ -59,19 +59,34 @@ function scratch(name: string, files: Record<string, string>): string {
 // Line 4 (1-based) of functional.md: "impl: UC-012.s1  prio: must".
 const ref = new vscode.Position(3, 10);
 
+/** Without REQUIMD_TEST_BIN the extension uses its bundled executable. */
 export async function setup(): Promise<void> {
-  await vscode.workspace
-    .getConfiguration('requimd')
-    .update('path', process.env.REQUIMD_TEST_BIN, vscode.ConfigurationTarget.Global);
+  if (process.env.REQUIMD_TEST_BIN !== undefined) {
+    await vscode.workspace
+      .getConfiguration('requimd')
+      .update('path', process.env.REQUIMD_TEST_BIN, vscode.ConfigurationTarget.Global);
+  }
 }
 
 /** Run in this order: later tests rely on the server started by the first. */
 export const tests: [string, () => Promise<void>][] = [
 
-  ['FR-500 FR-200 server starts for a requimd project', async () => {
+  ['NFR-011 FR-500 FR-200 server starts for a requimd project', async () => {
     const doc = await open(shop('functional.md'));
     const text = await waitFor(() => hover(doc.uri, ref), (t) => t.includes('Customer opens the cart'));
     assert.ok(text.includes('Customer opens the cart'), text);
+  }],
+
+  ['FR-501 FR-502 server from requimd.path or the bundled executable', async () => {
+    const ext = vscode.extensions.getExtension('josh-cest-moi.requimd')!;
+    const configured = vscode.workspace.getConfiguration('requimd').get<string>('path', '');
+    const bundled = path.join(ext.extensionPath, 'bin', process.platform === 'win32' ? 'requimd.exe' : 'requimd');
+    if (process.env.REQUIMD_TEST_BIN === undefined) {
+      assert.strictEqual(configured, '');
+      assert.ok(fs.existsSync(bundled), bundled);
+    } else {
+      assert.strictEqual(configured, process.env.REQUIMD_TEST_BIN);
+    }
   }],
 
   ['FR-205 hover', async () => {

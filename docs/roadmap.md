@@ -75,8 +75,6 @@ guide. Decisions: ADR-0008.
   frameworks) so test items show pass/fail, e.g. on the site; open: the
   lifecycle of tests and how automated tests are matched to items (test
   names or annotations with IDs)
-- VS Code extension in the Marketplace and Open VSX (needs publisher
-  accounts of the owner; ADR-0008)
 - Dedicated IntelliJ plugin, only on demand (ADR-0008)
 - On-demand AI review for ambiguity and contradictions (stage 3, ADR-0005)
 - Further pattern rules: comparatives without reference, passive voice

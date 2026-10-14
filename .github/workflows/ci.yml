@@ -67,6 +67,15 @@ jobs:
           key: vscode-test-${{ hashFiles('editors/vscode/src/test/run.ts') }}
       - run: npm ci
       - run: xvfb-run -a npm test
+      # FR-501, FR-502: the same tests against a packaged extension that
+      # uses its bundled executable.
+      - name: Package and test the .vsix
+        run: |
+          mkdir bin
+          cp ../../target/debug/requimd bin/
+          npx vsce package --target linux-x64 --out test.vsix
+          rm -r bin
+          REQUIMD_TEST_VSIX=test.vsix xvfb-run -a npm test
 
   # FR-400: the site of this repository's specification, as a downloadable
   # artifact. Publishing to GitHub Pages comes later.
