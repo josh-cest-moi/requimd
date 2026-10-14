@@ -64,13 +64,25 @@ As of 2026-10-13. Update this file at the end of every working session.
   [-o file]` (CLI module `export/mermaid.rs`): Mermaid flowchart in a
   Markdown code block. Rendering checked with Mermaid 11.4 in a browser.
   All `could` items after M5 are done.
-- **M6 Editor integrations: specified** (2026-10-13). FR-500 to FR-504,
-  NFR-011, UC-007.s2a and s2b, ADR-0008 (proposed). Not implemented yet.
+- **M6 Editor integrations: in progress.** Specified on 2026-10-13
+  (FR-500 to FR-504, NFR-011, UC-007.s2a and s2b, ADR-0008 proposed).
+  VS Code extension in `editors/vscode/` (FR-500, FR-501, FR-503): one
+  language client per project root; server commands registered once by the
+  extension and sent to the active editor's project; code lens opens the
+  reference view; finding modifiers underlined or italic in every theme.
+  18 tests in VS Code 1.91.1 (NFR-011), CI job `vscode` on Linux. Guide
+  `docs/vscode.md`. Open: `.vsix` packages in the release (FR-502),
+  IntelliJ guide (FR-504).
 
 ## Decision log
 
 | Date | Decision | Where recorded |
 |------|----------|----------------|
+| 2026-10-14 | VS Code tests download a pinned VS Code (oldest supported, 1.91.1) in CI, cached, one Linux job | `docs/vscode.md`, `.github/workflows/ci.yml` |
+| 2026-10-14 | One language client per project root; the extension registers the server commands once | `editors/vscode/src/extension.ts` |
+| 2026-10-14 | Finding modifiers mapped to underline and italic, not colours, since default themes have no warning colour scope | FR-503, `docs/vscode.md` |
+| 2026-10-14 | No test framework for the VS Code tests: a small PASS/FAIL runner like `nvim-check.lua` (mocha 12 does not load in VS Code 1.91, mocha 11 has audit findings) | `editors/vscode/src/test/` |
+| 2026-10-14 | Extension publisher name `josh-cest-moi` until a Marketplace account exists | `editors/vscode/package.json` |
 | 2026-10-13 | Work goes through GitHub pull requests; the owner merges | `CLAUDE.md` |
 | 2026-10-13 | New milestone M6 Editor integrations; new ID range FR 500–599 | `docs/roadmap.md`, `requirements/README.md` |
 | 2026-10-13 | VS Code extension with the binary bundled per platform; `.vsix` packages on GitHub Releases only, Marketplace and Open VSX later | FR-500 to FR-502, ADR-0008 |

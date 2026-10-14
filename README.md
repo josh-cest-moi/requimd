@@ -2,7 +2,7 @@
 
 Requirements as code: requirements live as Markdown files in a git repository.
 A CLI checks them, and a language server helps you write them in any LSP
-editor (primary target: Neovim 0.12).
+editor (primary targets: Neovim 0.12 and VS Code).
 
 > Spoken "requi-m-d" (ADR-0006). Status: milestones M1 to M4 done in Rust
 > (check command, language server, authoring comfort, impact analysis); M5
@@ -57,19 +57,20 @@ The binary `requimd` provides:
 | `requimd export mermaid <ID> [--depth n] [-o file]` | An item and its neighbours as a Mermaid diagram in a Markdown code block |
 | `requimd lsp` | Language server on stdio |
 
-Editor setup: `docs/neovim.md`.
+Editor setup: `docs/neovim.md`, `docs/vscode.md`.
 
 ## Repository layout
 
 | Path | Content |
 |------|---------|
 | `crates/` | Rust workspace: `requimd-core` (config, parser, model), `requimd-checks`, `requimd-lsp`, `requimd-cli` (binary `requimd`) |
+| `editors/vscode/` | VS Code extension (TypeScript) and its tests in a real VS Code |
 | `scripts/nvim-check.lua` | Checks the language server in Neovim without plugins |
 | `requirements/` | Specification of requimd, written in the requimd format (dogfooding) |
 | `docs/status.md` | Current state, decision log, open questions |
 | `docs/roadmap.md` | Milestones and their scope |
 | `docs/decisions/` | Architecture decision records |
-| `docs/neovim.md` | Editor setup |
+| `docs/neovim.md`, `docs/vscode.md` | Editor setup |
 | `examples/shop/` | Small valid sample project, used as test fixture |
 | `examples/broken/` | Sample with intentional errors and expected diagnostics |
 | `requimd.toml`, `requimd.lock` | Make this repository itself a requimd project; the lock file records reviewed links (ADR-0007) |
