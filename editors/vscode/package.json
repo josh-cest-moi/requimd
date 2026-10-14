@@ -2,7 +2,7 @@
   "name": "requimd",
   "displayName": "requimd",
   "description": "Requirements in Markdown: live checks, completion and navigation for requimd projects.",
-  "version": "0.1.0-alpha.2",
+  "version": "0.1.0-alpha.3",
   "publisher": "josh-cest-moi",
   "license": "MIT",
   "repository": {

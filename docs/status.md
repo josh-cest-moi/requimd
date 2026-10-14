@@ -74,12 +74,14 @@ As of 2026-10-13. Update this file at the end of every working session.
   twice: against the source and against a packaged `.vsix` with its
   bundled executable. The release attaches one `.vsix` per platform with
   the release binary (FR-502). Guide `docs/vscode.md`. All `must` items of
-  M6 are done; open: IntelliJ guide (FR-504).
+  M6 are done; open: IntelliJ guide (FR-504), deferred by the owner on
+  2026-10-14.
 
 ## Decision log
 
 | Date | Decision | Where recorded |
 |------|----------|----------------|
+| 2026-10-14 | IntelliJ guide (FR-504) deferred; release `v0.1.0-alpha.3` with the VS Code extension first | this file |
 | 2026-10-14 | No store publishing planned; VS Code packages only on GitHub Releases | `docs/roadmap.md` |
 | 2026-10-14 | The extension carries the Cargo version, alpha suffix included; the release fails if they differ | `.github/workflows/release.yml` |
 | 2026-10-14 | VS Code tests download a pinned VS Code (oldest supported, 1.91.1) in CI, cached, one Linux job | `docs/vscode.md`, `.github/workflows/ci.yml` |
@@ -242,12 +244,12 @@ As of 2026-10-13. Update this file at the end of every working session.
 
 1. Owner: try M3 and M4 in Neovim (`docs/neovim.md`) and review the open
    interpretations above (business questions 5 to 12).
-2. Alpha release `v0.1.0-alpha.2` (FR-216, FR-403, FR-404 since
-   alpha.1): check the release job and the four archives, then review and
-   test the tool on a real project. Further rounds: bump to `-alpha.3`
-   etc. in `Cargo.toml` and `editors/vscode/package.json` (a `release/`
-   PR); `v0.1.0` when the reviews are done. Test builds without
-   publishing, including the four `.vsix` packages: Actions → Release →
+2. Alpha release `v0.1.0-alpha.3` (VS Code extension, FR-500 to FR-503,
+   since alpha.2): check the release job, the four archives and the four
+   `.vsix` packages, then install the extension and test the tool on a real
+   project. Further rounds: bump to `-alpha.4` etc. in `Cargo.toml` and
+   `editors/vscode/package.json` (a `release/` PR); `v0.1.0` when the
+   reviews are done. Test builds without publishing: Actions → Release →
    Run workflow.
 3. Later: publish the site on GitHub Pages; FR-112 (EARS) and the other
    ideas in `docs/roadmap.md`.
