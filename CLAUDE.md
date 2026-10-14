@@ -11,15 +11,19 @@ as product owner.
 ## Status
 
 Specification done (M0); M1 (parser and `requimd check`), M2 (language
-server, `requimd lsp`), M3 (glossary, language checks, authoring features)
-M4 (lock file and suspect links, ADR-0007) and M5 (site, matrix and JSON
-export, releases) implemented in the cargo workspace under `crates/`. Next
-are FR-403 and FR-404 (see `docs/roadmap.md`). **Read
-`docs/status.md` first**: it holds the decision log, open questions and
-next steps.
+server, `requimd lsp`), M3 (glossary, language checks, authoring features),
+M4 (lock file and suspect links, ADR-0007), M5 (site, matrix and JSON
+export, releases) and FR-216, FR-403, FR-404 implemented in the cargo
+workspace under `crates/`. M6 (editor integrations, ADR-0008 proposed):
+the VS Code extension in `editors/vscode/` (FR-500 to FR-503) is done; the
+IntelliJ guide (FR-504) is deferred. Releases are alpha pre-releases
+(`v0.1.0-alpha.N`) on GitHub Releases. **Read `docs/status.md` first**:
+it holds the decision log, open questions and next steps.
 
 Implementation language is Rust (ADR-0001, accepted). Markdown parser
 pulldown-cmark and LSP library lsp-server (ADR-0003, accepted 2026-10-10).
+The VS Code extension is TypeScript; its tests run in a real VS Code with
+`npm test` in `editors/vscode/` (NFR-011, `docs/vscode.md`).
 
 ## Starting a milestone
 
