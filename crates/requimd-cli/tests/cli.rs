@@ -692,7 +692,7 @@ fn nfr_007_neovim_builtin_client_without_plugins() {
 
 #[test]
 fn nfr_010_every_must_requirement_of_a_milestone_has_a_test() {
-    // `must` items of M1 to M5 in docs/roadmap.md; M3 and M4 have none.
+    // `must` items of M1 to M6 in docs/roadmap.md; M3 and M4 have none.
     let mut ids: Vec<String> = Vec::new();
     ids.extend((1..=10).chain(12..=14).map(|n| format!("fr_{n:03}")));
     ids.extend((100..=109).chain([115, 117]).map(|n| format!("fr_{n:03}")));
@@ -709,6 +709,9 @@ fn nfr_010_every_must_requirement_of_a_milestone_has_a_test() {
     ids.extend(["nfr_001", "nfr_003", "nfr_007", "nfr_009"].map(String::from));
     // M5
     ids.push("nfr_005".into());
+    // M6 (VS Code tests in editors/vscode/src/test)
+    ids.extend((500..=502).map(|n| format!("fr_{n:03}")));
+    ids.push("nfr_011".into());
     let names = test_names();
     let missing: Vec<&String> = ids
         .iter()

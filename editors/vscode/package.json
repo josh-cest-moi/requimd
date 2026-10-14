@@ -2,7 +2,7 @@
   "name": "requimd",
   "displayName": "requimd",
   "description": "Requirements in Markdown: live checks, completion and navigation for requimd projects.",
-  "version": "0.1.0",
+  "version": "0.1.0-alpha.2",
   "publisher": "josh-cest-moi",
   "license": "MIT",
   "repository": {
@@ -102,6 +102,7 @@
     "@types/node": "20.19.43",
     "@types/vscode": "1.91.0",
     "@vscode/test-electron": "3.1.0",
+    "@vscode/vsce": "4.0.0",
     "typescript": "5.9.3"
   }
 }

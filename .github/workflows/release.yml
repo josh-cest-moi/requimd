@@ -1,11 +1,14 @@
-# Release binaries (NFR-005: one file to install).
+# Release binaries (NFR-005: one file to install) and the VS Code extension
+# with the binary for its platform (FR-502).
 #
 # - Push a tag such as v0.1.0 or v0.1.0-alpha.1 whose version matches
-#   Cargo.toml: the binaries are attached to a GitHub release of that tag.
+#   Cargo.toml and editors/vscode/package.json: the binaries and extension
+#   packages are attached to a GitHub release of that tag.
 #   A tag with a suffix (`-alpha.1`, `-beta.2`, `-rc.1`) becomes a
 #   pre-release.
 # - Run the workflow by hand (Actions → Release → Run workflow): the binaries
-#   are built and offered as downloads of the run; nothing is published.
+#   and extension packages are built and offered as downloads of the run;
+#   nothing is published.
 name: Release
 
 on:
@@ -28,12 +31,13 @@ jobs:
       matrix:
         include:
           # Static musl binary: runs on any Linux without libraries.
-          - { os: ubuntu-latest, target: x86_64-unknown-linux-musl, smoke: true }
-          - { os: macos-latest, target: aarch64-apple-darwin, smoke: true }
+          # `vscode`: the VS Code platform of the extension package.
+          - { os: ubuntu-latest, target: x86_64-unknown-linux-musl, vscode: linux-x64, smoke: true }
+          - { os: macos-latest, target: aarch64-apple-darwin, vscode: darwin-arm64, smoke: true }
           # Cross-compiled on an Apple silicon runner; not run there.
-          - { os: macos-latest, target: x86_64-apple-darwin, smoke: false }
+          - { os: macos-latest, target: x86_64-apple-darwin, vscode: darwin-x64, smoke: false }
           # Static C runtime: no Visual C++ redistributable needed.
-          - { os: windows-latest, target: x86_64-pc-windows-msvc, smoke: true, rustflags: "-C target-feature=+crt-static" }
+          - { os: windows-latest, target: x86_64-pc-windows-msvc, vscode: win32-x64, smoke: true, rustflags: "-C target-feature=+crt-static" }
     env:
       RUSTFLAGS: ${{ matrix.rustflags }}
     defaults:
@@ -50,6 +54,10 @@ jobs:
         if: github.ref_type == 'tag'
         run: |
           test "${GITHUB_REF_NAME}" = "v${VERSION}" || { echo "tag ${GITHUB_REF_NAME} != v${VERSION} in Cargo.toml"; exit 1; }
+      - name: Extension version matches
+        run: |
+          ext=$(node -p "require('./editors/vscode/package.json').version")
+          test "$ext" = "$VERSION" || { echo "editors/vscode/package.json has $ext, Cargo.toml $VERSION"; exit 1; }
       - name: musl tools
         if: contains(matrix.target, 'musl')
         run: sudo apt-get update && sudo apt-get install -y musl-tools
@@ -87,6 +95,28 @@ jobs:
         with:
           name: ${{ env.ASSET }}
           path: ${{ env.ASSET }}
+      # FR-502: the VS Code extension with this binary in bin/.
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: editors/vscode/package-lock.json
+      - name: VS Code extension package
+        working-directory: editors/vscode
+        run: |
+          vsix="requimd-vscode-${{ matrix.vscode }}-${VERSION}.vsix"
+          npm ci
+          npm run compile
+          mkdir bin
+          cp "../../$BIN" bin/
+          cp ../../LICENSE .
+          npx vsce package --target ${{ matrix.vscode }} --out "../../$vsix"
+          unzip -l "../../$vsix" | grep -q "extension/bin/$(basename "$BIN")"
+          echo "VSIX=$vsix" >> "$GITHUB_ENV"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: ${{ env.VSIX }}
+          path: ${{ env.VSIX }}
 
   # One job creates the release with all archives, so the text appears once.
   release:
@@ -117,7 +147,16 @@ jobs:
             echo "| macOS, Intel | \`requimd-${tag}-x86_64-apple-darwin.tar.gz\` |"
             echo "| Windows x86_64 | \`requimd-${tag}-x86_64-pc-windows-msvc.zip\` |"
             echo
-            echo "Editor setup: [docs/neovim.md](https://github.com/${GITHUB_REPOSITORY}/blob/${tag}/docs/neovim.md)."
+            echo "**VS Code:** download the extension package for your system and install it with Extensions view → \`…\` → *Install from VSIX…*. It contains \`requimd\`; nothing else is needed."
+            echo
+            echo "| System | Extension package |"
+            echo "|--------|-------------------|"
+            echo "| Linux x86_64 | \`requimd-vscode-linux-x64-${tag#v}.vsix\` |"
+            echo "| macOS, Apple silicon | \`requimd-vscode-darwin-arm64-${tag#v}.vsix\` |"
+            echo "| macOS, Intel | \`requimd-vscode-darwin-x64-${tag#v}.vsix\` |"
+            echo "| Windows x86_64 | \`requimd-vscode-win32-x64-${tag#v}.vsix\` |"
+            echo
+            echo "Editor setup: [Neovim](https://github.com/${GITHUB_REPOSITORY}/blob/${tag}/docs/neovim.md), [VS Code](https://github.com/${GITHUB_REPOSITORY}/blob/${tag}/docs/vscode.md)."
           } > release-body.md
           ls dist
       - uses: softprops/action-gh-release@v3

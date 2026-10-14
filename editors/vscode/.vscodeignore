@@ -1,0 +1,7 @@
+# Files left out of the .vsix package (FR-502).
+src/**
+out/test/**
+out/**/*.map
+tsconfig.json
+.vscode-test/**
+**/*.ts

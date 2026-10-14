@@ -94,7 +94,18 @@ function serverCommand(): string {
   }
   const exe = process.platform === 'win32' ? 'requimd.exe' : 'requimd';
   const bundled = path.join(context.extensionPath, 'bin', exe);
-  return fs.existsSync(bundled) ? bundled : 'requimd';
+  if (!fs.existsSync(bundled)) {
+    return 'requimd';
+  }
+  if (process.platform !== 'win32') {
+    // FR-502: the execute permission may not survive unpacking the .vsix.
+    try {
+      fs.chmodSync(bundled, 0o755);
+    } catch {
+      // Read-only installation: try to start it anyway.
+    }
+  }
+  return bundled;
 }
 
 async function startClient(root: string): Promise<void> {

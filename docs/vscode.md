@@ -18,8 +18,7 @@ The extension contains the `requimd` executable for its platform
    code --install-extension requimd-vscode-win32-x64-<version>.vsix
    ```
 
-The extension is not in the VS Code Marketplace yet, so updates are
-manual: install the package of the new release the same way.
+Updates are manual: install the package of the new release the same way.
 
 ## Settings
 
@@ -97,3 +96,17 @@ npm test
 downloaded once into `editors/vscode/.vscode-test/`, against
 `target/debug/requimd` (or `REQUIMD_TEST_BIN`). On Linux without a display,
 use `xvfb-run -a npm test`.
+
+To test a package instead, with its bundled executable (FR-501), as CI does:
+
+```bash
+mkdir bin && cp ../../target/debug/requimd bin/
+npx vsce package --target linux-x64 --out test.vsix
+rm -r bin
+REQUIMD_TEST_VSIX=test.vsix npm test
+```
+
+The release workflow builds one package per platform with the release
+binary and attaches it to the GitHub release (FR-502). The version in
+`editors/vscode/package.json` must match `Cargo.toml`; the release fails
+otherwise.
