@@ -1,0 +1,107 @@
+{
+  "name": "requimd",
+  "displayName": "requimd",
+  "description": "Requirements in Markdown: live checks, completion and navigation for requimd projects.",
+  "version": "0.1.0",
+  "publisher": "josh-cest-moi",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/josh-cest-moi/requimd.git",
+    "directory": "editors/vscode"
+  },
+  "engines": {
+    "vscode": "^1.91.0"
+  },
+  "categories": [
+    "Programming Languages",
+    "Linters"
+  ],
+  "keywords": [
+    "requirements",
+    "markdown",
+    "traceability"
+  ],
+  "activationEvents": [
+    "onLanguage:markdown"
+  ],
+  "main": "./out/extension.js",
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": true
+    }
+  },
+  "contributes": {
+    "configuration": {
+      "title": "requimd",
+      "properties": {
+        "requimd.path": {
+          "type": "string",
+          "default": "",
+          "scope": "machine",
+          "markdownDescription": "Path of the `requimd` executable. Empty: the executable bundled with the extension, else `requimd` from `PATH`."
+        },
+        "requimd.trace.server": {
+          "type": "string",
+          "enum": [
+            "off",
+            "messages",
+            "verbose"
+          ],
+          "default": "off",
+          "scope": "window",
+          "description": "Logs the messages between VS Code and the requimd language server in the output panel."
+        }
+      }
+    },
+    "semanticTokenModifiers": [
+      {
+        "id": "weakWord",
+        "description": "A weak word reported by the weak-word check."
+      },
+      {
+        "id": "modalVerb",
+        "description": "A modal verb reported by the modal-verb check."
+      },
+      {
+        "id": "glossaryAlias",
+        "description": "A glossary alias reported by the glossary-alias check."
+      }
+    ],
+    "semanticTokenScopes": [
+      {
+        "language": "markdown",
+        "scopes": {
+          "*.weakWord": [
+            "markup.underline"
+          ],
+          "*.modalVerb": [
+            "markup.underline"
+          ],
+          "*.glossaryAlias": [
+            "markup.italic"
+          ]
+        }
+      }
+    ],
+    "configurationDefaults": {
+      "[markdown]": {
+        "editor.semanticHighlighting.enabled": true
+      }
+    }
+  },
+  "scripts": {
+    "compile": "tsc -p .",
+    "watch": "tsc -watch -p .",
+    "test": "npm run compile && node ./out/test/run.js"
+  },
+  "dependencies": {
+    "vscode-languageclient": "10.1.2"
+  },
+  "devDependencies": {
+    "@types/node": "20.19.43",
+    "@types/vscode": "1.91.0",
+    "@vscode/test-electron": "3.1.0",
+    "typescript": "5.9.3"
+  }
+}

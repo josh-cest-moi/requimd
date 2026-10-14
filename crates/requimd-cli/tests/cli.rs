@@ -207,12 +207,23 @@ fn nfr_006_no_network_crates_in_dependency_tree() {
 /// Test function names in all crates, lowercased.
 fn test_names() -> Vec<String> {
     let mut names = Vec::new();
-    let mut dirs = vec![repo().join("crates")];
+    let mut dirs = vec![
+        repo().join("crates"),
+        repo().join("editors/vscode/src/test"),
+    ];
     while let Some(dir) = dirs.pop() {
         for entry in fs::read_dir(dir).unwrap() {
             let path = entry.unwrap().path();
             if path.is_dir() {
                 dirs.push(path);
+            } else if path.extension().is_some_and(|e| e == "ts") {
+                // NFR-011: VS Code tests are `['FR-500 title', async () => …`.
+                let text = fs::read_to_string(&path).unwrap();
+                for l in text.lines().map(str::trim) {
+                    if let Some(title) = l.strip_prefix("['").and_then(|t| t.split('\'').next()) {
+                        names.push(title.to_lowercase().replace(['-', ' '], "_"));
+                    }
+                }
             } else if path.extension().is_some_and(|e| e == "rs") {
                 let text = fs::read_to_string(&path).unwrap();
                 let mut lines = text.lines().map(str::trim);

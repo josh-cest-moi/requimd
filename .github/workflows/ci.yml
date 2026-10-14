@@ -42,6 +42,32 @@ jobs:
       - name: Performance tests in release mode (NFR-001 to NFR-003)
         run: cargo test --release -p requimd-lsp -p requimd-checks nfr_00
 
+  # NFR-011: the VS Code extension in a real VS Code, pinned in
+  # editors/vscode/src/test/run.ts. Linux only: the extension is the same on
+  # every platform; the release smoke tests cover the binaries.
+  vscode:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: editors/vscode
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo build --locked
+        working-directory: .
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: editors/vscode/package-lock.json
+      - uses: actions/cache@v6
+        with:
+          path: editors/vscode/.vscode-test
+          key: vscode-test-${{ hashFiles('editors/vscode/src/test/run.ts') }}
+      - run: npm ci
+      - run: xvfb-run -a npm test
+
   # FR-400: the site of this repository's specification, as a downloadable
   # artifact. Publishing to GitHub Pages comes later.
   site:
