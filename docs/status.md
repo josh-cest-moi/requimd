@@ -1,6 +1,6 @@
 # Project status
 
-As of 2026-10-13. Update this file at the end of every working session.
+As of 2026-10-16. Update this file at the end of every working session.
 
 ## State
 
@@ -75,11 +75,24 @@ As of 2026-10-13. Update this file at the end of every working session.
   bundled executable. The release attaches one `.vsix` per platform with
   the release binary (FR-502). Guide `docs/vscode.md`. All `must` items of
   M6 are done; open: IntelliJ guide (FR-504).
+- **Verification for v0.1.0: phase 1 of 2.** The owner verifies the
+  specification before the first release. `docs/testing-guide.md` walks
+  through it, written from the spec, ADRs and this file only: scenarios
+  along the use cases, design decisions, and the findings of phase 1
+  (gaps, contradictions, outdated documents, release topics). 182 manual
+  acceptance tests as `TC` items in `acceptance/` verify every requirement
+  except FR-112 and FR-405; base project `examples/acceptance/`; verdicts
+  go into `docs/verification-v0.1.0.md`. Next: phase 2 (decisions found
+  only in the code), a report on open and possible features, then
+  consolidating the spec, vision and scope, and the roadmap of v0.1.0.
 
 ## Decision log
 
 | Date | Decision | Where recorded |
 |------|----------|----------------|
+| 2026-10-16 | Before v0.1.0, the owner verifies the spec: testing guide in two phases (spec, then code), report on open features, then spec consolidation, vision and scope, roadmap | `docs/testing-guide.md` |
+| 2026-10-16 | Manual acceptance tests as `TC` items with `ver` links in `acceptance/`, one file and ID range per area; scenarios along the use cases as text in the guide | `acceptance/README.md` |
+| 2026-10-16 | Base project for the acceptance tests in `examples/acceptance/`, IDs from 901, so a stray mention in `acceptance/` is reported as dangling | `acceptance/README.md` |
 | 2026-10-14 | No store publishing planned; VS Code packages only on GitHub Releases | `docs/roadmap.md` |
 | 2026-10-14 | The extension carries the Cargo version, alpha suffix included; the release fails if they differ | `.github/workflows/release.yml` |
 | 2026-10-14 | VS Code tests download a pinned VS Code (oldest supported, 1.91.1) in CI, cached, one Linux job | `docs/vscode.md`, `.github/workflows/ci.yml` |
@@ -240,8 +253,10 @@ As of 2026-10-13. Update this file at the end of every working session.
 
 ## Next steps
 
-1. Owner: try M3 and M4 in Neovim (`docs/neovim.md`) and review the open
-   interpretations above (business questions 5 to 12).
+1. Owner: verify the specification with `docs/testing-guide.md` and record
+   the verdicts in `docs/verification-v0.1.0.md`; this includes the open
+   interpretations above (business questions 5 to 12). Then phase 2 of the
+   guide and the report on open features.
 2. Alpha release `v0.1.0-alpha.2` (FR-216, FR-403, FR-404 since
    alpha.1): check the release job and the four archives, then review and
    test the tool on a real project. Further rounds: bump to `-alpha.3`

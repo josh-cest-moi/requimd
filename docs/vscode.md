@@ -32,7 +32,7 @@ Updates are manual: install the package of the new release the same way.
 A Markdown file belongs to the project of the nearest `requimd.toml` above
 it. The extension starts one language server per project when the first
 file of that project is opened, so a workspace may hold several projects
-(this repository holds three: the specification and the two examples).
+(this repository holds the specification and the example projects).
 Markdown files outside any project get no requimd features.
 
 ## Features

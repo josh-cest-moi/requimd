@@ -67,12 +67,15 @@ Editor setup: `docs/neovim.md`, `docs/vscode.md`.
 | `editors/vscode/` | VS Code extension (TypeScript) and its tests in a real VS Code |
 | `scripts/nvim-check.lua` | Checks the language server in Neovim without plugins |
 | `requirements/` | Specification of requimd, written in the requimd format (dogfooding) |
+| `acceptance/` | Manual acceptance tests as `TC` items that verify the requirements |
+| `docs/testing-guide.md` | How to verify the specification by hand, with scenarios along the use cases |
 | `docs/status.md` | Current state, decision log, open questions |
 | `docs/roadmap.md` | Milestones and their scope |
 | `docs/decisions/` | Architecture decision records |
 | `docs/neovim.md`, `docs/vscode.md` | Editor setup |
 | `examples/shop/` | Small valid sample project, used as test fixture |
 | `examples/broken/` | Sample with intentional errors and expected diagnostics |
+| `examples/acceptance/` | Base project for the acceptance tests |
 | `requimd.toml`, `requimd.lock` | Make this repository itself a requimd project; the lock file records reviewed links (ADR-0007) |
 | `CLAUDE.md` | Context and working rules for Claude Code sessions |
 
