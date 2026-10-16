@@ -6,10 +6,13 @@ names the decisions behind it and gives tests to run by hand: end-to-end
 scenarios along the use cases here, detailed tests per requirement in
 `acceptance/`.
 
-Phase 1 (this version) is written from the specification, the decision
-records and the decision log only, without looking at the code. Phase 2
-adds the decisions that exist only in the code, the automated tests per
-requirement and the commands for the benchmarks (tag **Code**).
+It was written in two phases. Phase 1 used only the specification, the
+decision records and the decision log, without looking at the code; the
+expected results of the tests come from there. Phase 2 read the code and
+added, at each requirement, the decisions that exist only in the code
+(tag **Code**) and the automated tests that cover it, at each test what the
+code does where the spec is silent, and the commands for the benchmarks.
+Section 7 summarises what phase 2 found.
 
 ## 1. Approach
 
@@ -36,9 +39,9 @@ section 6 collects them.
 
 The steps after this guide, as agreed:
 
-1. Phase 1: this guide and the acceptance tests.
+1. Phase 1: this guide and the acceptance tests (done).
 2. Phase 2: undocumented decisions from the code, added at the
-   requirements and tests they concern.
+   requirements and tests they concern (done).
 3. A report on the open, planned and possible features.
 4. Consolidating the requirements from the verdicts (`spec/` pull
    requests), then vision and scope of v0.1.0, then the roadmap.
@@ -60,7 +63,7 @@ run again.
 | Path | Content |
 |------|---------|
 | `docs/testing-guide.md` | This guide: approach, preparation, scenarios, decisions, findings |
-| `acceptance/` | 182 acceptance tests as `TC` items, one file per area; conventions and tags in `acceptance/README.md` |
+| `acceptance/` | 185 acceptance tests as `TC` items, one file per area; conventions and tags in `acceptance/README.md` |
 | `examples/acceptance/` | The base project the tests start from |
 | `docs/verification-v0.1.0.md` | The record of verdicts, one row per item |
 | `docs/neovim.md`, `docs/vscode.md` | Editor setup and the feature tables the tests refer to |
@@ -144,6 +147,31 @@ or `grr` offers two servers, pick requimd.
 Install the `.vsix` of your platform as described in `docs/vscode.md`. In
 VS Code the tests only make sure the features work (TC-500 to TC-506);
 the details are tested in Neovim.
+
+### The automated tests
+
+Each requirement section in `acceptance/` lists its automated tests under
+**Automated**. Their names contain the requirement ID (NFR-010), so a name
+filter runs the tests of one requirement. From the repository root:
+
+| What | Command |
+|------|---------|
+| All Rust tests | `cargo test --all` |
+| The tests of one requirement | `cargo test fr_116` |
+| Performance and robustness as in CI (NFR-001 to NFR-003, NFR-009) | `cargo test --release -p requimd-lsp -p requimd-checks nfr_00` |
+| Latency, printing the 95th percentile | `cargo test --release -p requimd-lsp --test server nfr_001 -- --nocapture` |
+| Neovim check (NFR-007) | `nvim --headless --clean -l scripts/nvim-check.lua target/release/requimd` |
+| VS Code tests (NFR-011) | `npm ci`, then `npm test` in `editors/vscode/` |
+| Test traceability (NFR-010) | `cargo test -p requimd-cli --test cli nfr_010` |
+
+On Windows the executable for the Neovim check is
+`target/release/requimd.exe`. Every requirement has automated tests except
+BR-002 (covered by the tests of FR-212), BR-004 (a rule for people),
+FR-112 (not built), FR-405 (deprecated) and FR-504 (not written yet).
+
+A passing automated test shows that the code does what its author
+understood. The acceptance tests are there to check that this is what the
+specification says and what you want.
 
 ## 4. Scenarios along the use cases
 
@@ -300,7 +328,8 @@ requirement it concerns; confirming them is part of the verification.
 
 Points found while writing the tests. Each needs a decision: change the
 spec, accept as is, or record as open question. The tests named give the
-details.
+details. Phase 2 answers many of the unspecified points from the code;
+section 7 says how.
 
 ### Documents out of date
 
@@ -393,7 +422,8 @@ Clear in the spec, but possibly not what an analyst expects:
 
 For the scope of v0.1.0 (step 4 of section 1):
 
-- `requimd --version` and `--help` (no requirement).
+- `requimd --version` and `--help`: both exist (section 7), but no
+  requirement makes them part of the contract.
 - Stability promises for the format, `requimd.toml` and `requimd.lock`.
   The JSON export carries a format version (FR-402); the lock file has no
   version field in ADR-0007.
@@ -403,7 +433,123 @@ For the scope of v0.1.0 (step 4 of section 1):
 - Licence notices of the libraries bundled in the executable and in the
   `.vsix` packages.
 
-## 7. Not covered by tests
+## 7. Findings from phase 2
+
+What the code decides beyond the specification. Each point is also noted
+at its requirement or test in `acceptance/` (tag **Code**). For each,
+decide whether it goes into the spec as it is, should change, or stays an
+implementation detail.
+
+### Deviations from the specification
+
+- FR-012: no diagnostic is recorded for malformed content; what the parser
+  does not recognise stays plain text (TC-027, TC-028).
+- FR-218 says the server records "its" new links on save; the code records
+  the new links of the whole project, as `requimd check` does.
+- NFR-006: the test checks `Cargo.lock` for network libraries instead of
+  running the tests offline, as the meter says.
+- NFR-007: the Neovim test passes, with a note, when Neovim is not
+  installed.
+- NFR-008: the test checks only that metadata blocks in `examples/shop`
+  end with a blank line; the rendering stays a manual review.
+- NFR-001 and NFR-003: the tests enforce the `must` values, not `plan`.
+
+### Gaps the code answers
+
+These were open in phase 1. The code's answer is a candidate for the
+spec:
+
+- Format: prefixes are case-sensitive (TC-002); headings in block quotes
+  are items (TC-003); only link values have several values, and empty
+  entries are skipped (TC-012); body fields appear in the JSON export
+  (TC-404); extension steps have no special effect (TC-015); IDs in
+  non-link metadata are no mentions, IDs in HTML comments are (TC-019);
+  every glossary heading is a term, including `# Glossary` (TC-026);
+  `requimd init` sets the glossary to `glossary.md` (TC-308); nested
+  projects belong to the outer project too (TC-032); `FR-0901` and
+  `FR-901` are different items (TC-700).
+- Checks: values are case-sensitive (TC-111); one `missing-key` diagnostic
+  lists all missing keys (TC-113); a `ref` to the item itself is a cycle
+  (TC-121); a step has its use case's status (TC-123); "shall" in the
+  title does not count, any capitalisation does (TC-131); lock entries of
+  deleted targets are kept (FR-116); an invalid severity is a
+  configuration error (TC-146); configured modal verbs take no reason
+  (FR-118); allow entries ignore case (TC-153); a phrase split by a line
+  break is not covered by a marker (TC-151).
+- Language server: placeholders are not offered for completion,
+  duplicates are (FR-203); body field keys are not offered (FR-204); no
+  hover on an item's own heading (FR-205); items are listed flat in the
+  outline (FR-210); an unused prefix starts at 001 (TC-219); a stub for a
+  dangling reference uses that ID and has no title, a missing stub file is
+  created (TC-220, TC-223); rename works from a reference (TC-227);
+  changes to `requimd.toml` and `requimd.lock` outside the editor take
+  effect (TC-233); "add to weak words" is offered in every item type
+  (FR-219).
+- Command line: `--version` and `--help` exist; output paths are relative
+  to the current directory, sorted by file and position (FR-300); the
+  fields of JSON diagnostics (TC-306); `init` messages, exit code 0, and a
+  nested project without warning (TC-309); `fmt` uses two spaces and does
+  not update the lock file (TC-310, TC-311); the output of `show` and
+  `coverage` (FR-305, FR-306); `review` of an unknown ID ends with exit
+  code 1 (TC-317).
+- Export: the site has a page for every included file and the glossary,
+  with all text; links to items left out by `--status` become plain text;
+  old files in the output folder stay (TC-401); the CSV uses commas and
+  UTF-8 without byte order mark (TC-403); the content of the JSON export
+  (TC-404); `diff` without git ends with exit code 2 (FR-403).
+
+### Decisions to validate
+
+Behaviour that only the code defines and that may surprise an analyst:
+
+- A heading such as `## FR-001: Title`, with a colon after the ID, is
+  silently no item (TC-035).
+- `prio:must` without a space after the colon is silently text, so a link
+  written that way is lost (TC-036).
+- The site renders plain CommonMark: Markdown tables, strikethrough and
+  task lists appear as raw text, HTML as text (TC-412).
+- The matrix CSV will likely not open cleanly in Excel with German
+  regional settings (TC-403).
+- Adding an inline allow marker to a target, for example with "allow
+  here", makes its incoming links suspect, since the hash covers HTML
+  comments (FR-116).
+- With the default include pattern, every Markdown file below the root
+  counts, including folders such as `node_modules`; `.gitignore` is not
+  honoured (FR-013).
+- A hyphen joins words: "fast-track" does not match the weak word "fast"
+  (FR-110).
+- An ID in an HTML comment is a mention and can be dangling (FR-008).
+- Files that are not valid UTF-8 are read with replacement characters,
+  without a message (FR-012).
+- The site's labels are fixed in English (FR-400).
+- Rename does not touch IDs in titles or in text outside items (FR-214).
+- An ID that becomes duplicated is listed by `diff` as removed (FR-403).
+- On save, the whole project's links are recorded (FR-218).
+
+### Fixed names in the code
+
+The code relies on these names from the default configuration. A project
+that renames them in `requimd.toml` silently loses the related behaviour
+(open business question 7 and technical question 1 in `docs/status.md`):
+
+- types `usecase` (steps, coverage, implementations, stubs), `functional`
+  (weak words, modal verbs, "shall", stubs for uncovered steps), `quality`
+  (weak words), `story` (story pattern);
+- link keys `impl` (coverage, implementations, matrix), `ref` (cycles),
+  `ver` (matrix);
+- keys `status` (hash, diff, site, status consistency, with the values
+  `draft`, `review`, `approved` and `deprecated` in FR-109 and FR-404) and
+  `ac` (story pattern).
+
+### Release topics from the code
+
+- No checksums are published, and the macOS x86_64 build is not
+  smoke-tested in the release workflow (FR-502).
+- The generated project of the performance requirements exists only
+  inside the tests; a manual measurement of the command needs one
+  (TC-601).
+
+## 8. Not covered by tests
 
 - FR-112 EARS patterns: `could`, not built, on the "Later" list.
 - FR-405 Publishing target: deprecated.

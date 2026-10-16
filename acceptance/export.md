@@ -18,6 +18,18 @@ Decisions for the whole area:
 - Gap: links to items that `--status` leaves out; the handling of an
   existing, non-empty output folder; whether the glossary and the text
   outside items (introductions) appear on the site.
+- Code: every included file gets a page, the glossary too, with all its
+  text, including introductions outside items. Page names follow the source
+  paths; `index.md` becomes `index-page.html`. Links to items that
+  `--status` leaves out become plain text. Files in the output folder are
+  overwritten; files of an earlier export are not removed. `--status` values
+  must be in the status value set, else exit code 2.
+- Code: Markdown is rendered as plain CommonMark without extensions, so
+  GitHub-style tables, strikethrough and task lists appear as plain text
+  (TC-412). Raw HTML is shown as text; HTML comments are left out. The
+  labels of the site are fixed in English ("Requirements", "Referenced by").
+- Automated: `fr_400_static_site_pages_anchors_links_backlinks`,
+  `fr_400_status_filter_and_nested_paths` (cli tests).
 
 ### TC-400 One page per file, anchors, references, backlinks and index
 ver: FR-400
@@ -45,12 +57,48 @@ Then every item on the first site shows its status. The second site
 contains only `FR-902` and `FR-903`. Note how links to left-out items, such
 as `UC-901.s2`, appear (Gap).
 
+Code: `UC-901.s2` appears as plain text, not as a link.
+
+### TC-412 Tables, HTML and Markdown extensions on the site
+ver: FR-400, NFR-008
+
+Given `FR-902` gets the text below:
+
+```markdown
+| Country | VAT |
+|---------|-----|
+| DE | 19 % |
+
+Line one<br>line two, ~~old~~ and a task list:
+
+- [ ] open
+```
+
+When `requimd export site out` runs and the page of `functional.md` is
+opened; and the file is viewed on GitHub.
+
+Then the spec says only that the site shows the items (FR-400).
+
+Code: the site renders plain CommonMark: the table, the strikethrough and
+the task list appear as plain text, and `<br>` is shown as text. GitHub
+renders all of them.
+
+Validate: tables are common in requirements; stakeholders reading the site
+would see raw table syntax.
+
 ## Traceability matrix (FR-401)
 
 - Log 2026-10-12: one row per step with implementing and verifying items.
 - Gap: delimiter, character encoding and destination of the CSV output
   are not specified. Excel with German regional settings expects a
   semicolon and opens UTF-8 without byte order mark with broken umlauts.
+- Code: the CSV has the header
+  `use_case,step,text,implemented_by,verified_by`, commas as separator,
+  several IDs separated by spaces, and UTF-8 without byte order mark; it
+  goes to standard output or, with `-o`, to a file. Verifying items are
+  those with `ver` to an implementing item or to the step itself. The matrix
+  page adds a summary `N steps, I implemented, V verified`.
+- Automated: `fr_401_traceability_matrix_csv` (cli tests).
 
 ### TC-402 The matrix as a page and as CSV
 ver: FR-401
@@ -78,11 +126,22 @@ Then each value is in its own column and the umlauts are correct.
 
 Validate: this is how stakeholders will open it (Gap: format).
 
+Code: the CSV uses commas and UTF-8 without byte order mark. Excel with
+German regional settings is likely to put each row into one column and to
+show broken umlauts.
+
 ## JSON export (FR-402)
 
 - Gap: whether body fields, metadata such as status and priority, and the
   glossary are part of the "complete item graph"; the unit of positions
   (bytes or characters, 0- or 1-based).
+- Code: `format` (1) and `files`; per item `id` (null for a placeholder),
+  `display_id`, `type`, `title`, `status` (with the default), `file`,
+  `line`, `meta` (known keys without links), `fields` (body fields), `text`,
+  `steps`, and `links` and `mentions` with `target`, `resolved`, `line` and
+  `column` (1-based, bytes). The glossary is not included. This answers most
+  of the gap above.
+- Automated: `fr_402_json_export_of_item_graph` (cli tests).
 
 ### TC-404 The item graph as JSON with a format version
 ver: FR-402
@@ -94,6 +153,9 @@ When `requimd export json` runs (and is saved to a file).
 Then valid JSON with a format version, all eight items, the three steps,
 all links with type, the mention of `BR-901` in `FR-902`, and a source
 location for each.
+
+Code: the output also has `fields` (the `ac` value of `US-901`) and `meta`
+(the priorities).
 
 ## Requirement changelog (FR-403)
 
@@ -109,6 +171,16 @@ location for each.
   steps, steps one by one by label, and moving a step in the list is no
   change.
 - Gap: the result when `git` is not installed.
+- Code: an item whose ID becomes duplicated is listed as removed. The
+  glossary and files outside the include patterns are not compared. Without
+  git the command ends with `cannot run git` and exit code 2. Sorting is by
+  prefix in alphabetical order, then by number. JSON entries have `id`,
+  `change`, `title`, `file`, `parts` and, where they apply, `status`,
+  `steps` and `previous_file`.
+- Automated: `fr_403_no_changes_ignores_whitespace`,
+  `fr_403_added_removed_changed_with_parts`, `fr_403_only_unique_ids`,
+  `fr_403_json_names_parts` (cli diff.rs);
+  `fr_403_diff_between_references_and_working_tree` (cli tests).
 
 Preparation for these tests, in the copy of the base project:
 
@@ -181,6 +253,12 @@ change is listed as metadata change. Against the commit without
   the use case node and only the steps that shown items point to; draft
   has a dashed border, review yellow, approved green, deprecated grey,
   other values no style; step text is cut at 50 characters.
+- Code: a `flowchart LR`; the start item has a thicker border; references of
+  an item to itself are left out; an arrow's label is the link's `name`,
+  else its key. Confirms Q10.
+- Automated: `fr_404_direct_neighbours`, `fr_404_depth_and_step_reference`,
+  `fr_404_start_errors_as_show` (cli mermaid.rs);
+  `fr_404_mermaid_export_command` (cli tests).
 
 ### TC-409 An item and its direct neighbours
 ver: FR-404
@@ -219,6 +297,8 @@ When `requimd export mermaid FR-999`; `requimd export mermaid FR-901`;
 Then exit codes 1, 1 and 2, each with a message.
 
 ## Publishing target (FR-405)
+
+- Automated: none.
 
 Deprecated on 2026-10-12 by the product owner: no Confluence; PDFs come
 from an external Markdown-to-PDF converter. No tests.

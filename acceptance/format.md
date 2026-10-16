@@ -25,6 +25,15 @@ Decisions for the whole area:
 
 - Gap: the spec does not say whether prefixes are case-sensitive
   (`fr-001`), nor whether a heading inside a block quote or list counts.
+- Code: prefixes are case-sensitive, so `fr-914` is no item. A heading
+  inside a block quote or a list item is an item, since the Markdown parser
+  reports it as a heading. The first token must be the ID alone: a heading
+  such as `## FR-001: Title`, or one that starts with inline code, is
+  silently no item (TC-035). A heading with an ID and no title is an item
+  with an empty title, without a diagnostic.
+- Automated: `fr_001_heading_with_id_declares_item`,
+  `fr_001_unconfigured_prefix_and_other_first_tokens_are_no_items`,
+  `fr_001_any_heading_level_and_setext` (core parse.rs).
 
 ### TC-001 A heading that starts with an ID declares an item
 ver: FR-001
@@ -57,6 +66,8 @@ of `requimd export json` is inspected.
 Then none of the three headings is an item. For `fr-914` the spec is silent
 (Gap): note what happens.
 
+Code: `fr-914` is no item: prefixes are case-sensitive.
+
 ### TC-003 Setext headings and headings in block quotes
 ver: FR-001
 
@@ -74,7 +85,37 @@ When `requimd show FR-915` and `requimd show FR-916` run.
 Then `FR-915` is an item, since a setext heading is a Markdown heading.
 For `FR-916` the spec is silent (Gap): note what happens.
 
+Code: `FR-916` is an item: the parser treats a heading in a block quote like
+any other heading.
+
+### TC-035 Characters after the ID in a heading
+ver: FR-001
+
+Given a new file `a.md`:
+
+```markdown
+## FR-960: Colon after the ID
+## `FR-961` In code
+## FR-962
+```
+
+When `requimd check` and `requimd show` run for the three IDs.
+
+Then by FR-001 `FR-960` and `FR-961` are no items (the first token is no
+ID); `FR-962` is an item without title.
+
+Code: confirmed; none of the three headings gets a diagnostic.
+
+Validate: writing `FR-001: Title` is a common habit and silently turns the
+requirement into plain text. A warning may be worth adding (compare the
+near-miss IDs on the "Later" list).
+
 ## Item extent (FR-002)
+
+- Code: as specified; a body ends at the next heading of the same or a
+  higher level, or at the next item heading of any level.
+- Automated: `fr_002_body_ends_at_same_or_higher_level_or_item_heading`,
+  `fr_002_body_extends_to_end_of_file` (core parse.rs).
 
 ### TC-004 The body ends at the next heading of the same or a higher level
 ver: FR-002, FR-008
@@ -149,6 +190,19 @@ item bodies.
   metadata line by FR-003, but FR-102 reports its key as unknown. What
   happens to the known keys on that line and to the lines after it is
   open; see TC-108.
+- Code: the block ends at the first blank line or at the first line that
+  does not start with `key:`, so a text line directly below the metadata is
+  body text. A key needs a space or a tab after its colon: `prio:must` is no
+  key, and the line becomes text without a diagnostic (TC-036). Up to three
+  spaces of indentation are allowed.
+- Code: if the first line starts with an unknown key, the item has no
+  metadata block; the unknown key is still reported (FR-102), and the other
+  pairs on that line are ignored. Unknown keys on later lines of a block are
+  reported, and the block continues.
+- Automated: `fr_003_metadata_block_with_pairs`,
+  `fr_003_single_space_does_not_split_pairs`,
+  `fr_003_no_metadata_if_first_line_is_not_a_key`,
+  `fr_003_metadata_ends_at_blank_line_or_text` (core parse.rs).
 
 ### TC-007 Lines directly below the heading are the metadata block
 ver: FR-003
@@ -232,12 +286,37 @@ When `requimd check` and `requimd show FR-932` run.
 
 Then `status: wrong` is body text: no `invalid-value`, status `draft`.
 
+### TC-036 A key needs a space after its colon
+ver: FR-003
+
+Given the metadata line of `FR-901` is:
+
+```markdown
+impl:UC-901.s1  prio:must
+```
+
+When `requimd check` runs.
+
+Then the spec does not say whether `key:value` without a space is a pair
+(Gap).
+
+Code: the line is no metadata, since a key needs a space or a tab after
+the colon: it is body text, `s1` of `UC-901` becomes uncovered, and
+nothing points at the line.
+
+Validate: a typing slip that silently drops a link.
+
 ## Multiple values (FR-004)
 
 - Gap: only link keys can have several values. There is no setting that
   allows several values for another key, so the first sentence of FR-004
   has no effect today (`prio: must, should`). Empty entries such as
   `impl: UC-901.s1,,` are not specified.
+- Code: only link values are split at commas; other values never are, so
+  `prio: must, should` is one invalid value. Empty entries such as
+  `impl: UC-901.s1,,` are skipped without a diagnostic.
+- Automated: `fr_004_link_values_split_at_commas`,
+  `fr_004_invalid_link_value_has_no_target` (core parse.rs).
 
 ### TC-012 Link values are split at commas and trimmed
 ver: FR-004
@@ -258,6 +337,15 @@ Then `FR-901` has three `impl` links; nothing is reported.
   lists items, steps, links and mentions, not body fields. Apart from the
   `ac` field of stories (FR-113) and highlighting (FR-216), extracting them
   has no visible effect.
+- Code: the JSON export lists body fields with their values (`fields`,
+  FR-402), which closes the gap above for that output. A body field is any
+  body line after the metadata that starts with its key; a list belongs to
+  the value only if it starts on the very next line. The `required` keys of
+  a type may name body fields (FR-105).
+- Automated: `fr_005_body_fields_with_following_list`,
+  `fr_005_body_field_rest_of_line`,
+  `fr_005_body_field_directly_after_heading_is_not_metadata`,
+  `fr_005_body_fields_only_for_their_type` (core parse.rs).
 
 ### TC-013 Body fields of the item type are recognised
 ver: FR-005, FR-113
@@ -285,6 +373,11 @@ requirements, and the line is not directly after the heading (FR-102).
 
 - Gap: an extension such as `s2a` "extends" `s2`, but the spec gives that
   relation no visible effect (symbols, coverage, matrix).
+- Code: the extension relation has no effect in the code either; symbols,
+  coverage and matrix treat every step alike. The colon must follow the
+  label directly (`- s1 :` is no step); the text may follow without a space.
+- Automated: `fr_006_steps_in_use_cases`, `fr_006_steps_only_in_use_cases`
+  (core parse.rs).
 
 ### TC-015 List items that start with a label are steps
 ver: FR-006
@@ -340,6 +433,9 @@ Then the reference to `FR-940.s1` is a `dangling-ref` error.
 
 ## Step references (FR-007)
 
+- Automated: `fr_007_step_reference` (core parse.rs);
+  `fr_007_resolves_items_and_steps` (core project.rs).
+
 ### TC-018 A step reference resolves to the step
 ver: FR-007
 
@@ -356,6 +452,16 @@ item are printed; the editor jumps to the step line in `usecases.md`.
 - Gap: whether IDs in metadata values that are not links (`src: FR-901` in
   a rule) are mentions. FR-002 makes the metadata block part of the body,
   FR-110 excludes it from the "text", FR-008 does not say.
+- Code: IDs in metadata values that are not links are no mentions; the
+  metadata block is skipped. IDs inside HTML comments are mentions, since
+  only code is skipped, so `<!-- see FR-999 -->` gives a `dangling-ref`
+  warning. A letter, digit, hyphen or underscore directly before or after an
+  ID makes it part of a longer word (`a-FR-001` is none). IDs in lower-level
+  headings within an item's body are mentions; the item's own title is not
+  searched.
+- Automated: `fr_008_mentions_in_body_fields_and_steps`,
+  `fr_008_only_whole_words`, `fr_008_metadata_is_not_mentioned` (core
+  parse.rs).
 
 ### TC-019 IDs in text, body fields and steps are mentions
 ver: FR-008
@@ -397,6 +503,11 @@ Validate: an ID in a title is no reference.
 
 ## Code is ignored (FR-009)
 
+- Code: HTML comments are no code: they are searched for mentions, while the
+  language checks ignore them (FR-110).
+- Automated: `fr_009_code_is_ignored`,
+  `fr_009_indented_code_after_heading_is_no_metadata` (core parse.rs).
+
 ### TC-021 Code blocks and inline code hide items and references
 ver: FR-009
 
@@ -420,6 +531,11 @@ Then only `FR-943` is an item; neither `FR-944` nor `FR-945` exists, and
 nothing is reported for `FR-999` or `UC-999.s1`.
 
 ## Placeholder IDs (FR-010)
+
+- Code: confirms Q5 for placeholders: `ref: FR-?` is a `dangling-ref` error
+  with the message `placeholder FR-? cannot be a link target`.
+- Automated: `fr_010_placeholders_take_part_in_checks_but_not_duplicates`
+  (checks tests); `fr_010_placeholder_id` (core parse.rs).
 
 ### TC-022 Placeholder items take part in the checks except duplicate IDs
 ver: FR-010, FR-115
@@ -461,6 +577,14 @@ and reports nothing.
 - Gap: FR-014 names no default glossary path, so a project without
   `[project] glossary` has no glossary. FR-303 creates "an empty glossary
   file" without saying where.
+- Code: every heading of any level is a term, also a title such as
+  `# Glossary`; a unit test expects this. The `alias` line must directly
+  follow the heading. A definition runs to the next heading of any level.
+  `requimd init` writes `glossary = "glossary.md"` and creates that file;
+  without the setting there is no glossary.
+- Code: confirms Q7: a missing glossary file stops `requimd check` with exit
+  code 2; the language server ignores it.
+- Automated: `fr_011_glossary_terms_with_aliases` (core parse.rs).
 
 ### TC-024 Headings of the glossary file are terms, `alias` lists aliases
 ver: FR-011, FR-114, FR-205
@@ -501,11 +625,20 @@ When in Neovim hover on "glossary" in `FR-901`.
 Then by the spec "Glossary" is a term (every heading), so the hover shows
 its (empty) definition. Validate: probably not wanted (Gap).
 
+Code: "Glossary" is a term; the hover shows only its name, since the next
+heading follows directly.
+
 ## Tolerant parsing (FR-012)
 
 - Gap: FR-012 asks for "a diagnostic for that item" but names no check ID
   or severity, and does not say which content counts as malformed.
 - NFR-009 tests robustness in the editor (`quality.md`).
+- Code (deviation): no diagnostic is recorded for malformed content. The
+  parser never fails; whatever it does not recognise stays plain text, and
+  only the regular checks report something (TC-027). Files that are not
+  valid UTF-8 are read with replacement characters, without a message.
+- Automated: `fr_012_crlf_line_endings`, `fr_012_survives_arbitrary_input`
+  (core parse.rs).
 
 ### TC-027 Malformed content does not stop the check
 ver: FR-012
@@ -523,6 +656,9 @@ When `requimd check` runs.
 
 Then the check completes; the items of the base project are checked as
 before. Note which diagnostics appear for `a.md`.
+
+Code: expect only a `no-shall` info for `FR-950`, an item with an empty
+title. `## FR-` and the other lines are plain text and get no diagnostic.
 
 ### TC-028 An unclosed code fence
 ver: FR-012, FR-009
@@ -546,6 +682,8 @@ of the file. Nothing points at the cause.
 Validate: a missing closing fence silently removes all following items of
 the file. A diagnostic may be worth adding (Gap).
 
+Code: confirmed; no diagnostic.
+
 ## Configuration discovery (FR-013)
 
 - Q5 (to confirm): unknown check IDs and unknown keys in `requimd.toml`
@@ -554,6 +692,20 @@ the file. A diagnostic may be worth adding (Gap).
   root), a nested project with its own `requimd.toml` is part of the outer
   project too. `docs/vscode.md` says a file belongs to the nearest
   `requimd.toml`, the spec does not.
+- Code: configuration errors (exit code 2) are: invalid TOML; every unknown
+  section, key or option (confirms Q5); a prefix that is not letters and
+  digits, or that two types use; a `to` entry that names no configured type;
+  a `required` key that is no key of its type; an invalid include pattern;
+  `digits = 0`; an `[lsp]` length of 0; an unknown check ID or severity. The
+  check ID `ears` is accepted, though FR-112 is not built.
+- Code: the file walk skips only `.git`. With the default include pattern,
+  every Markdown file below the root belongs to the project: nested projects
+  (TC-032), but also folders such as `node_modules`; `.gitignore` is not
+  honoured.
+- Automated: `fr_013_reads_all_sections`,
+  `fr_013_invalid_configs_are_errors`,
+  `fr_013_finds_root_in_parent_directory` (core config.rs);
+  `fr_013_load_uses_include_patterns` (core project.rs).
 
 ### TC-029 The project root is found from a subdirectory
 ver: FR-013, FR-300
@@ -625,6 +777,9 @@ Then in `sub` only the inner project is checked. In the root, the spec
 does not say whether `sub/a.md` belongs to the outer project, where it
 would be a `duplicate-id` (Gap): note what happens.
 
+Code: in the root, `sub/a.md` belongs to the outer project too, so both
+declarations of `FR-901` get `duplicate-id`.
+
 ## Configuration defaults (FR-014)
 
 - Log 2026-10-11: built-in defaults are the types, links, fields and
@@ -636,6 +791,16 @@ would be a `duplicate-id` (Gap): note what happens.
   The repository cannot change its own types (for example body fields for
   its tests) without changing the defaults of every project. The table in
   FR-014 could be the normative definition alone.
+- Code: the built-in defaults are the template that `requimd init` writes
+  (`INIT_TEMPLATE` in `crates/requimd-core/src/config.rs`), without its
+  glossary line. A unit test (`fr_014_defaults_match_reference_config`)
+  keeps this repository's `requimd.toml` equal to them. So the reference in
+  FR-014 holds, but the repository cannot change its own types without
+  failing that test.
+- Automated: `fr_014_defaults_contain_types_links_and_values`,
+  `fr_014_defaults_match_reference_config`,
+  `fr_014_project_entry_replaces_default_entry` (core config.rs);
+  `fr_014_default_include_is_all_markdown_files` (core project.rs).
 
 ### TC-033 A configuration without sections uses the defaults
 ver: FR-014

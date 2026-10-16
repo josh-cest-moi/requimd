@@ -7,7 +7,11 @@ One row per item of `requirements/`, for the verification described in
   `question`.
 - **Verified**: does requimd fulfil it? `ok` or `bug`; `-` if not built.
 - **Note**: what to change, the bug, the question, or the decision on a
-  Gap or Q point of its tests.
+  Gap, Q or Code point of its tests.
+
+**Tests** are the acceptance tests in `acceptance/`; **Automated** is the
+number of Rust tests named after the item, plus the Neovim and VS Code
+checks that cover it (see section 3 of the guide).
 
 Items with `ok` in both columns get `status: approved` (only the product
 owner sets it, BR-004), in the order of section 1 of the guide. Use cases
@@ -16,142 +20,142 @@ rules through the tests in `acceptance/rules.md`.
 
 ## Business rules
 
-| Item | Title | Prio | Tests | Valid | Verified | Note |
-|------|-------|------|-------|-------|----------|------|
-| BR-001 | Item ID format | must | TC-700, TC-701 | | | |
-| BR-002 | IDs are never reused | must | TC-702 | | | |
-| BR-003 | Step labels are stable | must | TC-703 | | | |
-| BR-004 | Approval is a human decision | must | TC-704 | | | |
-| BR-005 | File layout carries no meaning | must | TC-705 | | | |
+| Item | Title | Prio | Tests | Automated | Valid | Verified | Note |
+|------|-------|------|-------|-----------|-------|----------|------|
+| BR-001 | Item ID format | must | TC-700, TC-701 | 1 | | | |
+| BR-002 | IDs are never reused | must | TC-702 | – | | | |
+| BR-003 | Step labels are stable | must | TC-703 | 1 | | | |
+| BR-004 | Approval is a human decision | must | TC-704 | – | | | |
+| BR-005 | File layout carries no meaning | must | TC-705 | 1 | | | |
 
 ## Use cases
 
-| Item | Title | Prio | Tests | Valid | Verified | Note |
-|------|-------|------|-------|-------|----------|------|
-| UC-001 | Write a new requirement | must | scenario UC-001 | | | |
-| UC-002 | Navigate traceability in the editor | must | scenario UC-002 | | | |
-| UC-003 | Validate the repository | must | scenario UC-003 | | | |
-| UC-004 | Review the impact of a change | should | scenario UC-004 | | | |
-| UC-005 | Rename an item ID | should | scenario UC-005 | | | |
-| UC-006 | Publish requirements for stakeholders | should | scenario UC-006 | | | |
-| UC-007 | Set up a project | must | scenario UC-007 | | | |
+| Item | Title | Prio | Tests | Automated | Valid | Verified | Note |
+|------|-------|------|-------|-----------|-------|----------|------|
+| UC-001 | Write a new requirement | must | scenario UC-001 | – | | | |
+| UC-002 | Navigate traceability in the editor | must | scenario UC-002 | – | | | |
+| UC-003 | Validate the repository | must | scenario UC-003 | – | | | |
+| UC-004 | Review the impact of a change | should | scenario UC-004 | – | | | |
+| UC-005 | Rename an item ID | should | scenario UC-005 | – | | | |
+| UC-006 | Publish requirements for stakeholders | should | scenario UC-006 | – | | | |
+| UC-007 | Set up a project | must | scenario UC-007 | – | | | |
 
 ## File format
 
-| Item | Title | Prio | Tests | Valid | Verified | Note |
-|------|-------|------|-------|-------|----------|------|
-| FR-001 | Item declaration | must | TC-001, TC-002, TC-003, TC-700, TC-701, TC-705 | | | |
-| FR-002 | Item extent | must | TC-004, TC-005, TC-006 | | | |
-| FR-003 | Metadata block | must | TC-108, TC-007, TC-008, TC-009, TC-010, TC-011 | | | |
-| FR-004 | Multiple values | must | TC-012 | | | |
-| FR-005 | Body fields | must | TC-109, TC-013, TC-014 | | | |
-| FR-006 | Use case steps | must | TC-015, TC-016, TC-017, TC-703 | | | |
-| FR-007 | Step references | must | TC-016, TC-018 | | | |
-| FR-008 | Mentions in text | must | TC-004, TC-006, TC-019, TC-020 | | | |
-| FR-009 | Code is ignored | must | TC-021, TC-028 | | | |
-| FR-010 | Placeholder IDs | must | TC-022, TC-023 | | | |
-| FR-011 | Glossary | should | TC-024, TC-025, TC-026, TC-209 | | | |
-| FR-012 | Tolerant parsing | must | TC-027, TC-028, TC-608 | | | |
-| FR-013 | Configuration discovery | must | TC-025, TC-029, TC-030, TC-031, TC-032, TC-701 | | | |
-| FR-014 | Configuration defaults | must | TC-308, TC-033, TC-034 | | | |
+| Item | Title | Prio | Tests | Automated | Valid | Verified | Note |
+|------|-------|------|-------|-----------|-------|----------|------|
+| FR-001 | Item declaration | must | TC-001, TC-002, TC-003, TC-035, TC-700, TC-701, TC-705 | 3 | | | |
+| FR-002 | Item extent | must | TC-004, TC-005, TC-006 | 2 | | | |
+| FR-003 | Metadata block | must | TC-108, TC-007, TC-008, TC-009, TC-010, TC-011, TC-036 | 4 | | | |
+| FR-004 | Multiple values | must | TC-012 | 2 | | | |
+| FR-005 | Body fields | must | TC-109, TC-013, TC-014 | 4 | | | |
+| FR-006 | Use case steps | must | TC-015, TC-016, TC-017, TC-703 | 2 | | | |
+| FR-007 | Step references | must | TC-016, TC-018 | 2 | | | |
+| FR-008 | Mentions in text | must | TC-004, TC-006, TC-019, TC-020 | 3 | | | |
+| FR-009 | Code is ignored | must | TC-021, TC-028 | 2 | | | |
+| FR-010 | Placeholder IDs | must | TC-022, TC-023 | 2 | | | |
+| FR-011 | Glossary | should | TC-024, TC-025, TC-026, TC-209 | 1 | | | |
+| FR-012 | Tolerant parsing | must | TC-027, TC-028, TC-608 | 2 | | | |
+| FR-013 | Configuration discovery | must | TC-025, TC-029, TC-030, TC-031, TC-032, TC-701 | 4 | | | |
+| FR-014 | Configuration defaults | must | TC-308, TC-033, TC-034 | 4 | | | |
 
 ## Checks
 
-| Item | Title | Prio | Tests | Valid | Verified | Note |
-|------|-------|------|-------|-------|----------|------|
-| FR-100 | Duplicate IDs | must | TC-100, TC-101, TC-102 | | | |
-| FR-101 | Dangling references | must | TC-103, TC-104, TC-105, TC-023 | | | |
-| FR-102 | Unknown metadata key | must | TC-106, TC-107, TC-108, TC-109 | | | |
-| FR-103 | Invalid value | must | TC-110, TC-111, TC-008 | | | |
-| FR-104 | Link target type | must | TC-112 | | | |
-| FR-105 | Required keys | must | TC-113, TC-114, TC-115 | | | |
-| FR-106 | Uncovered steps | must | TC-102, TC-116, TC-117, TC-118 | | | |
-| FR-107 | Duplicate step labels | must | TC-119 | | | |
-| FR-108 | Refinement cycles | must | TC-120, TC-121 | | | |
-| FR-109 | Status consistency | must | TC-122, TC-123 | | | |
-| FR-110 | Weak words | should | TC-124, TC-125, TC-126, TC-127, TC-128, TC-129, TC-153 | | | |
-| FR-111 | Missing "shall" | should | TC-130, TC-131 | | | |
-| FR-112 | EARS patterns | could | – | | | |
-| FR-113 | User story pattern | should | TC-132, TC-133, TC-134, TC-013 | | | |
-| FR-114 | Glossary aliases | should | TC-135, TC-136, TC-137, TC-024 | | | |
-| FR-115 | Remaining placeholders | must | TC-138, TC-022 | | | |
-| FR-116 | Suspect links | should | TC-139, TC-140, TC-141, TC-142, TC-143, TC-144, TC-303, TC-316, TC-703, TC-705 | | | |
-| FR-117 | Check configuration | must | TC-104, TC-129, TC-145, TC-146 | | | |
-| FR-118 | Modal verbs | should | TC-147, TC-148 | | | |
-| FR-119 | Allow lists and inline markers | should | TC-146, TC-149, TC-150, TC-151, TC-152, TC-153, TC-230 | | | |
+| Item | Title | Prio | Tests | Automated | Valid | Verified | Note |
+|------|-------|------|-------|-----------|-------|----------|------|
+| FR-100 | Duplicate IDs | must | TC-100, TC-101, TC-102 | 4 | | | |
+| FR-101 | Dangling references | must | TC-103, TC-104, TC-105, TC-023 | 2 | | | |
+| FR-102 | Unknown metadata key | must | TC-106, TC-107, TC-108, TC-109 | 5 | | | |
+| FR-103 | Invalid value | must | TC-110, TC-111, TC-008 | 1 | | | |
+| FR-104 | Link target type | must | TC-112 | 1 | | | |
+| FR-105 | Required keys | must | TC-113, TC-114, TC-115 | 1 | | | |
+| FR-106 | Uncovered steps | must | TC-102, TC-116, TC-117, TC-118 | 1 | | | |
+| FR-107 | Duplicate step labels | must | TC-119 | 1 | | | |
+| FR-108 | Refinement cycles | must | TC-120, TC-121 | 2 | | | |
+| FR-109 | Status consistency | must | TC-122, TC-123 | 1 | | | |
+| FR-110 | Weak words | should | TC-124, TC-125, TC-126, TC-127, TC-128, TC-129, TC-153 | 9 | | | |
+| FR-111 | Missing "shall" | should | TC-130, TC-131 | 1 | | | |
+| FR-112 | EARS patterns | could | – | – | | | |
+| FR-113 | User story pattern | should | TC-132, TC-133, TC-134, TC-013 | 1 | | | |
+| FR-114 | Glossary aliases | should | TC-135, TC-136, TC-137, TC-024 | 2 | | | |
+| FR-115 | Remaining placeholders | must | TC-138, TC-022 | 1 | | | |
+| FR-116 | Suspect links | should | TC-139, TC-140, TC-141, TC-142, TC-143, TC-144, TC-303, TC-316, TC-703, TC-705 | 8, Neovim | | | |
+| FR-117 | Check configuration | must | TC-104, TC-129, TC-145, TC-146 | 2 | | | |
+| FR-118 | Modal verbs | should | TC-147, TC-148 | 1 | | | |
+| FR-119 | Allow lists and inline markers | should | TC-146, TC-149, TC-150, TC-151, TC-152, TC-153, TC-230 | 6 | | | |
 
 ## Language server
 
-| Item | Title | Prio | Tests | Valid | Verified | Note |
-|------|-------|------|-------|-------|----------|------|
-| FR-200 | Server start | must | TC-200 | | | |
-| FR-201 | Project scope | must | TC-201 | | | |
-| FR-202 | Live diagnostics | must | TC-202, TC-203 | | | |
-| FR-203 | Reference completion | must | TC-204, TC-205 | | | |
-| FR-204 | Key and value completion | must | TC-206 | | | |
-| FR-205 | Hover | must | TC-024, TC-207, TC-208, TC-209 | | | |
-| FR-206 | Go to definition | must | TC-210 | | | |
-| FR-207 | Find references | must | TC-211, TC-212 | | | |
-| FR-208 | Go to implementation | must | TC-213 | | | |
-| FR-209 | Inlay hints | should | TC-214 | | | |
-| FR-210 | Document symbols | must | TC-215 | | | |
-| FR-211 | Workspace symbols | must | TC-216 | | | |
-| FR-212 | Assign ID | must | TC-303, TC-310, TC-217, TC-218, TC-219, TC-702, TC-704 | | | |
-| FR-213 | Create stub | should | TC-220, TC-221, TC-222, TC-223, TC-704 | | | |
-| FR-214 | Rename | should | TC-224, TC-225, TC-226, TC-227, TC-702, TC-704 | | | |
-| FR-215 | Code lens on steps | should | TC-501, TC-228 | | | |
-| FR-216 | Semantic tokens | could | TC-505, TC-229, TC-230, TC-231 | | | |
-| FR-217 | External file changes | must | TC-232, TC-233 | | | |
-| FR-218 | Mark as reviewed | should | TC-218, TC-234, TC-235, TC-704 | | | |
-| FR-219 | Language check code actions | should | TC-236, TC-237, TC-238 | | | |
+| Item | Title | Prio | Tests | Automated | Valid | Verified | Note |
+|------|-------|------|-------|-----------|-------|----------|------|
+| FR-200 | Server start | must | TC-200 | 2, Neovim, VS Code | | | |
+| FR-201 | Project scope | must | TC-201 | 2 | | | |
+| FR-202 | Live diagnostics | must | TC-202, TC-203 | 2, Neovim, VS Code | | | |
+| FR-203 | Reference completion | must | TC-204, TC-205 | 5, Neovim, VS Code | | | |
+| FR-204 | Key and value completion | must | TC-206 | 3, Neovim, VS Code | | | |
+| FR-205 | Hover | must | TC-024, TC-207, TC-208, TC-209 | 4, Neovim, VS Code | | | |
+| FR-206 | Go to definition | must | TC-210 | 1, Neovim, VS Code | | | |
+| FR-207 | Find references | must | TC-211, TC-212 | 1, Neovim, VS Code | | | |
+| FR-208 | Go to implementation | must | TC-213 | 1, Neovim, VS Code | | | |
+| FR-209 | Inlay hints | should | TC-214 | 3, Neovim, VS Code | | | |
+| FR-210 | Document symbols | must | TC-215 | 1, Neovim, VS Code | | | |
+| FR-211 | Workspace symbols | must | TC-216 | 1, Neovim, VS Code | | | |
+| FR-212 | Assign ID | must | TC-303, TC-310, TC-217, TC-218, TC-219, TC-702, TC-704 | 4, Neovim, VS Code | | | |
+| FR-213 | Create stub | should | TC-220, TC-221, TC-222, TC-223, TC-704 | 5 | | | |
+| FR-214 | Rename | should | TC-224, TC-225, TC-226, TC-227, TC-702, TC-704 | 3, Neovim, VS Code | | | |
+| FR-215 | Code lens on steps | should | TC-501, TC-228 | 1, Neovim, VS Code | | | |
+| FR-216 | Semantic tokens | could | TC-505, TC-229, TC-230, TC-231 | 3, Neovim | | | |
+| FR-217 | External file changes | must | TC-232, TC-233 | 3, Neovim, VS Code | | | |
+| FR-218 | Mark as reviewed | should | TC-218, TC-234, TC-235, TC-704 | 1, Neovim | | | |
+| FR-219 | Language check code actions | should | TC-236, TC-237, TC-238 | 4, Neovim, VS Code | | | |
 
 ## Command line
 
-| Item | Title | Prio | Tests | Valid | Verified | Note |
-|------|-------|------|-------|-------|----------|------|
-| FR-300 | Check command | must | TC-300, TC-301, TC-302, TC-303, TC-304, TC-305, TC-029, TC-030 | | | |
-| FR-301 | Machine-readable output | must | TC-306 | | | |
-| FR-302 | Strict mode | must | TC-307 | | | |
-| FR-303 | Init command | must | TC-308, TC-309 | | | |
-| FR-304 | Format command | should | TC-310, TC-311, TC-312, TC-702, TC-703, TC-704 | | | |
-| FR-305 | Show command | should | TC-313, TC-314 | | | |
-| FR-306 | Coverage command | should | TC-315 | | | |
-| FR-307 | Review command | should | TC-316, TC-317, TC-704 | | | |
-| FR-308 | LSP command | must | TC-200 | | | |
+| Item | Title | Prio | Tests | Automated | Valid | Verified | Note |
+|------|-------|------|-------|-----------|-------|----------|------|
+| FR-300 | Check command | must | TC-300, TC-301, TC-302, TC-303, TC-304, TC-305, TC-029, TC-030 | 13 | | | |
+| FR-301 | Machine-readable output | must | TC-306 | 1 | | | |
+| FR-302 | Strict mode | must | TC-307 | 1 | | | |
+| FR-303 | Init command | must | TC-308, TC-309 | 2 | | | |
+| FR-304 | Format command | should | TC-310, TC-311, TC-312, TC-702, TC-703, TC-704 | 4 | | | |
+| FR-305 | Show command | should | TC-313, TC-314 | 1 | | | |
+| FR-306 | Coverage command | should | TC-315 | 1 | | | |
+| FR-307 | Review command | should | TC-316, TC-317, TC-704 | 2 | | | |
+| FR-308 | LSP command | must | TC-200 | 1, Neovim | | | |
 
 ## Export
 
-| Item | Title | Prio | Tests | Valid | Verified | Note |
-|------|-------|------|-------|-------|----------|------|
-| FR-400 | Static site | should | TC-400, TC-401 | | | |
-| FR-401 | Traceability matrix | should | TC-402, TC-403 | | | |
-| FR-402 | JSON export | should | TC-404 | | | |
-| FR-403 | Requirement changelog | could | TC-405, TC-406, TC-407, TC-408, TC-705 | | | |
-| FR-404 | Diagram export | could | TC-409, TC-410, TC-411 | | | |
-| FR-405 | Publishing target (deprecated) | could | – | | | |
+| Item | Title | Prio | Tests | Automated | Valid | Verified | Note |
+|------|-------|------|-------|-----------|-------|----------|------|
+| FR-400 | Static site | should | TC-400, TC-401, TC-412 | 2 | | | |
+| FR-401 | Traceability matrix | should | TC-402, TC-403 | 1 | | | |
+| FR-402 | JSON export | should | TC-404 | 1 | | | |
+| FR-403 | Requirement changelog | could | TC-405, TC-406, TC-407, TC-408, TC-705 | 5 | | | |
+| FR-404 | Diagram export | could | TC-409, TC-410, TC-411 | 4 | | | |
+| FR-405 | Publishing target (deprecated) | could | – | – | | | |
 
 ## Editor integrations
 
-| Item | Title | Prio | Tests | Valid | Verified | Note |
-|------|-------|------|-------|-------|----------|------|
-| FR-500 | VS Code extension | must | TC-500, TC-501, TC-506 | | | |
-| FR-501 | Bundled language server | must | TC-502, TC-503 | | | |
-| FR-502 | Extension packages in the release | must | TC-504 | | | |
-| FR-503 | Highlighting in VS Code | should | TC-505 | | | |
-| FR-504 | IntelliJ setup guide | should | TC-507 | | | |
+| Item | Title | Prio | Tests | Automated | Valid | Verified | Note |
+|------|-------|------|-------|-----------|-------|----------|------|
+| FR-500 | VS Code extension | must | TC-500, TC-501, TC-506 | VS Code | | | |
+| FR-501 | Bundled language server | must | TC-502, TC-503 | VS Code | | | |
+| FR-502 | Extension packages in the release | must | TC-504 | VS Code | | | |
+| FR-503 | Highlighting in VS Code | should | TC-505 | VS Code | | | |
+| FR-504 | IntelliJ setup guide | should | TC-507 | – | | | |
 
 ## Quality requirements
 
-| Item | Title | Prio | Tests | Valid | Verified | Note |
-|------|-------|------|-------|-------|----------|------|
-| NFR-001 | Diagnostics latency | must | TC-600 | | | |
-| NFR-002 | Full check duration | must | TC-601 | | | |
-| NFR-003 | Server start | must | TC-602 | | | |
-| NFR-004 | Platforms | must | TC-603 | | | |
-| NFR-005 | Installation | must | TC-604 | | | |
-| NFR-006 | Offline operation | must | TC-605 | | | |
-| NFR-007 | Editor neutrality | must | TC-606 | | | |
-| NFR-008 | Plain Markdown readability | must | TC-607 | | | |
-| NFR-009 | Robustness | must | TC-608 | | | |
-| NFR-010 | Test traceability | must | TC-609 | | | |
-| NFR-011 | VS Code feature coverage | must | TC-506, TC-610 | | | |
+| Item | Title | Prio | Tests | Automated | Valid | Verified | Note |
+|------|-------|------|-------|-----------|-------|----------|------|
+| NFR-001 | Diagnostics latency | must | TC-600 | 1 | | | |
+| NFR-002 | Full check duration | must | TC-601 | 1 | | | |
+| NFR-003 | Server start | must | TC-602 | 1 | | | |
+| NFR-004 | Platforms | must | TC-603 | 1 | | | |
+| NFR-005 | Installation | must | TC-604 | 1 | | | |
+| NFR-006 | Offline operation | must | TC-605 | 1 | | | |
+| NFR-007 | Editor neutrality | must | TC-606 | 1, Neovim | | | |
+| NFR-008 | Plain Markdown readability | must | TC-412, TC-607 | 1 | | | |
+| NFR-009 | Robustness | must | TC-608 | 1 | | | |
+| NFR-010 | Test traceability | must | TC-609 | 1 | | | |
+| NFR-011 | VS Code feature coverage | must | TC-506, TC-610 | VS Code | | | |

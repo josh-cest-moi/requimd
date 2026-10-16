@@ -30,11 +30,15 @@ requirements that put the rule into practice and mention the rule.
 
 Each requirement has a section heading, such as "Duplicate IDs (FR-100)",
 that is not an item. Below it, a few lines name the decisions behind the
-requirement and the open points, then follow its tests. A test reads:
+requirement, the open points, what the code decides beyond the spec
+(**Code**) and the automated tests that cover it (**Automated**); then
+follow its tests. A test reads:
 
 - **Given**: the starting situation, usually a change to the base project.
 - **When**: the action, a command or an editor action.
 - **Then**: the expected result, derived from the specification only.
+- **Code**, where the spec is silent or the code differs: what the
+  implementation does.
 
 ## Tags
 
@@ -45,7 +49,7 @@ requirement and the open points, then follow its tests. A test reads:
 | Q5 … Q10 | Interpretation listed under open business questions 5 to 10 in `docs/status.md`: implemented, not in the spec, to be confirmed |
 | Gap | Found while writing the tests: the spec is silent, ambiguous or contradicts itself. Needs a decision. |
 | Validate | The spec is clear, but the behaviour may surprise an analyst. Confirm that it is intended. |
-| Code | Decision found only in the code (added in phase 2) |
+| Code | Decision found only in the code (phase 2); "Code (deviation)" where it differs from the spec |
 
 ## Base project
 

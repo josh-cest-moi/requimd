@@ -22,8 +22,20 @@ Decisions for the whole area:
   offers it, else the server polls every 2 seconds; the server resolves
   paths to their real spelling and rescans the disk on file events that do
   not fit it (Neovim on Windows reports 8.3 short paths).
+- Code: one server serves one project root, found from the first workspace
+  folder or the first opened file; Neovim (`root_markers`) and the VS Code
+  extension start one server per root. Diagnostics are published 30 ms after
+  the last change, and only for open documents. Positions are exchanged in
+  UTF-8 if the client offers it, else in UTF-16. If `requimd.toml` becomes
+  invalid, the server shows an error and keeps the last valid configuration.
 
 ## Server start (FR-200, FR-308)
+
+- Automated: `fr_200_uri_roundtrip` (lsp convert.rs);
+  `fr_200_initialize_capabilities_and_shutdown` (lsp tests);
+  `fr_308_lsp_command_speaks_lsp_over_stdio` (cli tests); also checked in
+  Neovim (`scripts/nvim-check.lua`) and VS Code
+  (`editors/vscode/src/test/suite/features.ts`).
 
 ### TC-200 The server starts over stdio with `requimd lsp`
 ver: FR-200, FR-308
@@ -40,6 +52,11 @@ In the terminal the server waits silently for input on stdin.
 
 - Q6 (to confirm): language features work only in included files, also
   hover and go to definition, not only diagnostics and completion.
+- Code: the glossary file always gets language features, even outside the
+  include patterns. Confirms Q6.
+- Automated: `fr_201_include_patterns_match_relative_paths` (core
+  project.rs); `fr_201_files_outside_include_patterns_get_nothing` (lsp
+  tests).
 
 ### TC-201 Only included files get language features
 ver: FR-201
@@ -62,6 +79,10 @@ attaches.
 ## Live diagnostics (FR-202)
 
 - NFR-001 sets the latency limit (`quality.md`).
+- Automated: `fr_202_positions_in_utf16_and_utf8` (lsp convert.rs);
+  `fr_202_diagnostics_on_open_change_and_in_other_documents` (lsp tests);
+  also checked in Neovim (`scripts/nvim-check.lua`) and VS Code
+  (`editors/vscode/src/test/suite/features.ts`).
 
 ### TC-202 Diagnostics follow typing without saving
 ver: FR-202
@@ -88,6 +109,17 @@ gone.
 ## Reference completion (FR-203)
 
 - Gap: whether placeholder and duplicate items appear as candidates.
+- Code: placeholders are not offered, duplicated IDs are (once per
+  declaration); `:` is a trigger character too. Candidates match by any part
+  of ID and title, ignoring case; steps show up to 80 characters of their
+  text.
+- Automated: `fr_203_link_completion_limited_to_target_types`,
+  `fr_203_link_completion_after_comma_and_by_title`,
+  `fr_203_body_completion_by_id_prefix_and_title`,
+  `fr_203_no_completion_in_code` (lsp features.rs);
+  `fr_203_to_fr_212_requests_over_protocol` (lsp tests); also checked in
+  Neovim (`scripts/nvim-check.lua`) and VS Code
+  (`editors/vscode/src/test/suite/features.ts`).
 
 ### TC-204 Completion in link values offers allowed targets with details
 ver: FR-203
@@ -119,6 +151,13 @@ Then `BR-901` is offered after `BR-`; for `total` the menu finds `FR-902`
 - Gap: whether body field keys (`pre`, `post`, `trigger` for use cases)
   are offered as keys, and which keys are offered on the first line below
   a heading that has no metadata block yet.
+- Code: body field keys are not offered; keys already used in the item are
+  left out. Keys are offered on the first line below the heading and on the
+  lines of the block.
+- Automated: `fr_204_key_completion_at_metadata_line_start`,
+  `fr_204_key_completion_after_pair_separator`, `fr_204_value_completion`
+  (lsp features.rs); also checked in Neovim (`scripts/nvim-check.lua`) and
+  VS Code (`editors/vscode/src/test/suite/features.ts`).
 
 ### TC-206 Keys at the start of a metadata line, values after a key
 ver: FR-204
@@ -139,6 +178,16 @@ no value set.
 - Log 2026-10-11: `[lsp] hover-length`, default 500 characters.
 - Gap: FR-205 speaks of "a reference" but includes glossary terms, which
   are none. Hover on the ID in an item's own heading is not specified.
+- Code: the ID in an item's own heading has no hover. A duplicated ID shows
+  `declared more than once`. Glossary hover works anywhere in an included
+  file, also in quotes and code. The text is cut by characters and ends with
+  "…".
+- Automated: `fr_205_hover_length_configurable` (core config.rs);
+  `fr_205_hover_on_item_and_step_reference`,
+  `fr_205_hover_text_limited_to_hover_length`,
+  `fr_205_hover_on_glossary_term_and_alias` (lsp features.rs); also checked
+  in Neovim (`scripts/nvim-check.lua`) and VS Code
+  (`editors/vscode/src/test/suite/features.ts`).
 
 ### TC-207 Hover on a reference shows the target
 ver: FR-205
@@ -176,6 +225,11 @@ Then both show the definition of Cart.
 
 ## Go to definition (FR-206)
 
+- Code: no target for glossary terms and duplicated IDs.
+- Automated: `fr_206_definition_of_item_and_step` (lsp features.rs); also
+  checked in Neovim (`scripts/nvim-check.lua`) and VS Code
+  (`editors/vscode/src/test/suite/features.ts`).
+
 ### TC-210 Go to definition on links, step references and mentions
 ver: FR-206
 
@@ -191,6 +245,11 @@ of `BR-901`. A duplicated ID resolves to no item (FR-100): no jump.
 
 - Q6 (to confirm): find references on an item also lists references to
   its steps.
+- Code: confirms Q6; the cursor may be on a reference, an item heading or a
+  step line.
+- Automated: `fr_207_references_to_item_and_step` (lsp features.rs); also
+  checked in Neovim (`scripts/nvim-check.lua`) and VS Code
+  (`editors/vscode/src/test/suite/features.ts`).
 
 ### TC-211 Find references on an item heading
 ver: FR-207
@@ -217,6 +276,9 @@ from `FR-901`, `FR-902` and `FR-903` (Q6, to confirm).
 
 - Log 2026-10-11: go to implementation on a use case includes links to
   its steps.
+- Automated: `fr_208_implementations_of_use_case_and_step` (lsp
+  features.rs); also checked in Neovim (`scripts/nvim-check.lua`) and VS
+  Code (`editors/vscode/src/test/suite/features.ts`).
 
 ### TC-213 Implementations of a use case and of a step
 ver: FR-208
@@ -231,6 +293,13 @@ Then `UC-901`: `FR-901`, `FR-902`, `FR-903`. `s2`: only `FR-902`; the
 ## Inlay hints (FR-209)
 
 - Log 2026-10-12: `[lsp] hint-length`, default 40.
+- Code: hints only after links, not after mentions, and none for a missing
+  target.
+- Automated: `fr_213_stub_file_and_fr_209_hint_length` (core config.rs);
+  `fr_209_inlay_hints_after_links` (lsp features.rs);
+  `fr_209_to_fr_219_authoring_features_over_protocol` (lsp tests); also
+  checked in Neovim (`scripts/nvim-check.lua`) and VS Code
+  (`editors/vscode/src/test/suite/features.ts`).
 
 ### TC-214 Hints after references in metadata blocks
 ver: FR-209
@@ -249,6 +318,12 @@ characters.
 
 - Gap: "nested accordingly" is clear for steps below their use case, not
   for an item heading below another item heading (TC-005).
+- Code: items are listed flat, also an item heading nested below another;
+  steps are children with up to 60 characters of their text. Use cases have
+  the symbol kind "module", other items "object".
+- Automated: `fr_210_document_symbols_with_steps` (lsp features.rs); also
+  checked in Neovim (`scripts/nvim-check.lua`) and VS Code
+  (`editors/vscode/src/test/suite/features.ts`).
 
 ### TC-215 Items of a document with steps nested below their use case
 ver: FR-210
@@ -261,6 +336,12 @@ Then `FR-901` to `FR-903` in the first; `UC-901` with `s1`, `s2`, `s2a`
 nested below it in the second.
 
 ## Workspace symbols (FR-211)
+
+- Code: the query matches any part of "ID title", ignoring case; an empty
+  query lists all items.
+- Automated: `fr_211_workspace_symbols_by_id_and_title` (lsp features.rs);
+  also checked in Neovim (`scripts/nvim-check.lua`) and VS Code
+  (`editors/vscode/src/test/suite/features.ts`).
 
 ### TC-216 All items of the project, searchable by ID and title
 ver: FR-211
@@ -280,6 +361,14 @@ Then `FR-902` and `NFR-901` for "total", from both files; `UC-901` for
   lock file joined in M4.
 - Gap: the first ID of a prefix without any item or lock entry is not
   specified (presumably `-001`).
+- Code: a prefix without items and without lock entry starts at 001
+  (TC-219); the action is offered as preferred quick fix.
+- Automated: `fr_212_fmt_does_not_reuse_ids_of_deleted_items` (cli tests);
+  `fr_212_next_id_is_one_higher_than_highest` (core project.rs);
+  `fr_212_assign_id_code_action` (lsp features.rs);
+  `fr_203_to_fr_212_requests_over_protocol` (lsp tests); also checked in
+  Neovim (`scripts/nvim-check.lua`) and VS Code
+  (`editors/vscode/src/test/suite/features.ts`).
 
 ### TC-217 A placeholder gets the next free ID
 ver: FR-212
@@ -313,6 +402,8 @@ When "Assign ID" on both.
 Then `US-902`; for the prefix without any item the spec is silent (Gap):
 note what happens.
 
+Code: `RSK-001`.
+
 ## Create stub (FR-213)
 
 - Log 2026-10-12: `[lsp] stub-file`; a dangling step reference adds the
@@ -325,6 +416,18 @@ note what happens.
   missing file.
 - BR-003 says a new step gets the next free number; the step stub uses
   the label of the reference instead.
+- Code: on a dangling reference, link or mention, the stub is a heading with
+  exactly that ID (`## FR-990`), without title, link or status, at the
+  heading level of the referencing item. On an uncovered step it is
+  `## FR-? <step text>` with an `impl` link to the step, at the use case's
+  heading level, with the prefix of the type named `functional`. A missing
+  step is appended as `- s7: ` with empty text. A `stub-file` that does not
+  exist is created.
+- Automated: `fr_213_stub_file_and_fr_209_hint_length` (core config.rs);
+  `fr_213_stub_for_dangling_reference`,
+  `fr_213_missing_step_is_added_to_use_case`,
+  `fr_213_requirement_stub_for_uncovered_step_in_stub_file`,
+  `fr_213_stub_file_is_created_if_missing` (lsp actions.rs).
 
 ### TC-220 Stub for a dangling reference
 ver: FR-213
@@ -335,6 +438,8 @@ When `gra` on `FR-990` and "Create stub" is chosen.
 
 Then a stub item for `FR-990` is added at the end of `functional.md` and
 the `dangling-ref` disappears. Note which ID the stub gets (Gap).
+
+Code: the stub is `## FR-990`, with that ID and no title.
 
 ### TC-221 Stub for an uncovered step
 ver: FR-213
@@ -367,6 +472,8 @@ When the stubs are created.
 Then both land in `inbox.md` (Gap if it does not exist yet: note what
 happens).
 
+Code: a missing `inbox.md` is created.
+
 ## Rename (FR-214)
 
 - Log 2026-10-12: rename keeps the prefix; changing the type is a manual
@@ -374,6 +481,14 @@ happens).
   the rename, so a cancelled rename changes nothing.
 - Gap: whether rename works from a reference as well as from the heading.
   Step labels cannot be renamed (BR-003 keeps them stable).
+- Code: rename works from a reference too (gap above). It is also refused
+  for a duplicated ID and for the same ID. IDs in code, in titles and in
+  text outside items are not changed, since they are no references.
+- Automated: `fr_214_rename_rewrites_lock_entries` (core lock.rs);
+  `fr_214_rename_updates_declaration_and_references`,
+  `fr_214_rename_refuses_invalid_existing_or_other_prefix` (lsp
+  features.rs); also checked in Neovim (`scripts/nvim-check.lua`) and VS
+  Code (`editors/vscode/src/test/suite/features.ts`).
 
 ### TC-224 Rename updates declaration, references and lock entries
 ver: FR-214
@@ -418,11 +533,18 @@ cancelled with Escape.
 Then for the reference the spec is silent (Gap): note what happens. The
 cancelled rename changes neither files nor `requimd.lock`.
 
+Code: rename from the reference works like from the heading.
+
 ## Code lens on steps (FR-215)
 
 - Log 2026-10-12: the lens title lists the IDs; running it needs a
   4-line handler in the Neovim configuration (`docs/neovim.md`), else the
   server opens the first implementing item.
+- Code: the lens title is `no implementation` or, for example,
+  `2 impl: FR-901, FR-902`.
+- Automated: `fr_215_code_lens_per_step` (lsp features.rs); also checked in
+  Neovim (`scripts/nvim-check.lua`) and VS Code
+  (`editors/vscode/src/test/suite/features.ts`).
 
 ### TC-228 A lens per step with number and IDs of implementing items
 ver: FR-215
@@ -448,6 +570,12 @@ item `FR-902` for `s2`, and `s3` shows none (zero). Running it lists
   overlap, keys, IDs and step labels win over findings, and findings over
   terms; unknown metadata keys are not highlighted as keys.
 - `docs/neovim.md` lists the token types and the default highlight groups.
+- Code: mentions of missing items are highlighted like references. Confirms
+  Q8.
+- Automated: `fr_216_semantic_tokens`,
+  `fr_216_allowed_and_disabled_findings_not_highlighted` (lsp features.rs);
+  `fr_216_semantic_tokens_over_protocol` (lsp tests); also checked in Neovim
+  (`scripts/nvim-check.lua`).
 
 ### TC-229 IDs, references, keys, step labels and terms are highlighted
 ver: FR-216
@@ -492,6 +620,15 @@ confirm).
 - Gap: FR-217 covers included files. Changes to `requimd.toml` or
   `requimd.lock` outside the editor (for example by `git pull`) are not
   specified.
+- Code: the server asks the client to watch `**/*.md`, `requimd.toml` and
+  `requimd.lock`; without client support it polls every 2 seconds by
+  modification time. A changed `requimd.toml` is loaded again, and so is a
+  changed lock file (TC-233).
+- Automated: `fr_217_real_path_expands_short_names_and_keeps_missing_files`
+  (lsp convert.rs); `fr_217_external_changes_by_polling`,
+  `fr_217_external_changes_reported_by_client` (lsp tests); also checked in
+  Neovim (`scripts/nvim-check.lua`) and VS Code
+  (`editors/vscode/src/test/suite/features.ts`).
 
 ### TC-232 Changes outside the editor update graph and diagnostics
 ver: FR-217
@@ -517,7 +654,17 @@ editor; then a lock entry hash is edited by hand in another editor.
 Then the spec is silent on both (Gap): note whether the warning
 disappears and whether a suspect link appears.
 
+Code: both take effect: the warning disappears, and the edited hash makes
+the link suspect.
+
 ## Mark as reviewed (FR-218)
+
+- Code (interpretation): on save, the server records the new links of the
+  whole project, not only of the saved document, removes the entries of
+  vanished links and raises `[ids]`, as `requimd check` does; it writes the
+  lock file only if it changed. "Mark as reviewed" records new links first.
+- Automated: `fr_116_fr_218_suspect_links_over_protocol` (lsp tests); also
+  checked in Neovim (`scripts/nvim-check.lua`).
 
 ### TC-234 Marking a suspect link as reviewed
 ver: FR-218
@@ -550,6 +697,18 @@ has one.
   ADR-0003).
 - Gap: whether "Add to weak words" is offered in item types where the
   weak-word check does not apply (use cases, stories).
+- Code: the word is written in lower case to marker and allow list; an entry
+  already in the list, in any case, is not added again; a severity string
+  such as `weak-word = "info"` becomes `{ sev = "info" }` in place; a change
+  that would make `requimd.toml` invalid is refused. "Add to weak words" is
+  offered in every item type, also on modal verbs and aliases, but not on
+  words with digits or on known weak words (TC-238).
+- Automated: `fr_219_allow_here_adds_or_extends_marker`,
+  `fr_219_add_to_weak_words_offered_on_plain_words`,
+  `fr_219_toml_edits_keep_comments` (lsp actions.rs);
+  `fr_209_to_fr_219_authoring_features_over_protocol` (lsp tests); also
+  checked in Neovim (`scripts/nvim-check.lua`) and VS Code
+  (`editors/vscode/src/test/suite/features.ts`).
 
 ### TC-236 Allow here adds or extends the inline marker
 ver: FR-219

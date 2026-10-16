@@ -16,6 +16,10 @@ allowing `ver` to rules? Related to open business questions 11
   for such near-miss IDs.
 - Gap: whether `FR-0901` and `FR-901` are the same ID. BR-001 allows more
   digits than configured, so both are valid.
+- Code: IDs are compared as text, so `FR-0902` and `FR-902` are two
+  different items side by side; for the next free number both count as 902
+  (TC-700).
+- Automated: `br_001_id_needs_configured_digits` (core parse.rs).
 
 ### TC-700 Valid and invalid ID forms
 ver: FR-001
@@ -33,6 +37,8 @@ When `requimd check`, `requimd show FR-9001`, `requimd show FR-91` run.
 Then `FR-9001` is an item; `FR-91` is none, without a diagnostic (Q5).
 For `FR-0902` next to the existing `FR-902` the spec is silent (Gap):
 note whether it is a second item or a `duplicate-id`.
+
+Code: `FR-0902` is a second item next to `FR-902`, without `duplicate-id`.
 
 ### TC-701 Changing the number of digits later
 ver: FR-001, FR-013
@@ -58,6 +64,8 @@ be needed.
 - ADR-0007: `[ids]` in the lock file never decreases.
 - Validate: only numbers up to the highest ever seen are protected. An ID
   below that, deleted and then typed again by hand, is not detected.
+- Code: no automated test carries the ID; the tests of FR-212 cover it.
+- Automated: none.
 
 ### TC-702 Deleted and renamed IDs are not assigned again
 ver: FR-212, FR-304, FR-214
@@ -77,6 +85,7 @@ Then the first placeholder becomes `FR-904`, not `FR-903`; the second
 - Gap: BR-003 says a new step gets the next free step number, but no
   feature assigns step labels; the analyst picks them. FR-213 appends a
   missing step with the label of the reference, not the next free number.
+- Automated: `br_003_step_label_independent_of_position` (core parse.rs).
 
 ### TC-703 No feature renumbers steps
 ver: FR-006, FR-304, FR-116
@@ -93,6 +102,9 @@ to the whole use case is (its body changed).
 
 ## Approval is a human decision (BR-004)
 
+- Code: no automated test; stubs are written without a `status` line.
+- Automated: none.
+
 ### TC-704 No feature sets status `approved`
 ver: FR-212, FR-213, FR-214, FR-218, FR-304, FR-307
 
@@ -106,6 +118,8 @@ Then no item gets `status: approved` (search the files for `approved`);
 new stubs have no `status` line or `status: draft`.
 
 ## File layout carries no meaning (BR-005)
+
+- Automated: `br_005_file_layout_carries_no_meaning` (core project.rs).
 
 ### TC-705 Moving items between files changes nothing
 ver: FR-001, FR-116, FR-403

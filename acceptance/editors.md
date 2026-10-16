@@ -35,6 +35,15 @@ Decisions for the whole area:
 
 - `docs/vscode.md` states that `requimd.path` is read from user settings
   only, not from workspace settings. The spec does not say so.
+- Code: a server starts when a Markdown file on disk below a `requimd.toml`
+  is opened, with the project root as working directory. `requimd.path` has
+  the scope "machine": user settings only, so a workspace cannot choose the
+  executable, and the extension also works in untrusted workspaces. Semantic
+  highlighting is switched on for Markdown by default. If the server cannot
+  start, an error message points to `requimd.path`; changing the setting
+  restarts the servers.
+- Automated: Checked in VS Code
+  (`editors/vscode/src/test/suite/features.ts`).
 
 ### TC-500 The extension starts the server for the project's Markdown files
 ver: FR-500
@@ -61,6 +70,12 @@ Then the reference view lists `FR-902`.
 
 ## Bundled language server (FR-501)
 
+- Code: without a bundled executable, `requimd` from `PATH` is used. On
+  Linux and macOS the extension sets the execute permission of the bundled
+  file, which unpacking the `.vsix` may lose.
+- Automated: Checked in VS Code
+  (`editors/vscode/src/test/suite/features.ts`).
+
 ### TC-502 No other installation is needed
 ver: FR-501
 
@@ -86,6 +101,13 @@ Then the output panel shows that this executable runs.
 
 ## Extension packages in the release (FR-502)
 
+- Code: the release builds a zip archive for Windows and tar.gz archives
+  otherwise, each with a folder inside; there are no checksums; the macOS
+  x86_64 build is not smoke-tested (no such runner). The release fails if
+  tag, `Cargo.toml` and extension versions differ.
+- Automated: Checked in VS Code
+  (`editors/vscode/src/test/suite/features.ts`).
+
 ### TC-504 One package per platform on the release page
 ver: FR-502
 
@@ -98,6 +120,11 @@ darwin-arm64, darwin-x64, win32-x64), named with the release version, and
 `docs/vscode.md` describes the installation from such a package.
 
 ## Highlighting in VS Code (FR-503)
+
+- Code: `package.json` maps weakWord and modalVerb to `markup.underline`,
+  glossaryAlias to `markup.italic`.
+- Automated: Checked in VS Code
+  (`editors/vscode/src/test/suite/features.ts`).
 
 ### TC-505 Findings are visible in every theme without configuration
 ver: FR-503, FR-216
@@ -115,6 +142,8 @@ item IDs, keys and glossary terms have theme colours.
 
 - NFR-011 is met by an automated test in CI (TC-610 in `quality.md`).
   This test is the manual counterpart.
+- Automated: Checked in VS Code
+  (`editors/vscode/src/test/suite/features.ts`).
 
 ### TC-506 The language server features work in VS Code
 ver: NFR-011, FR-500
@@ -133,6 +162,8 @@ Then each works as its Neovim test in `lsp.md` describes, with the VS Code
 keys of `docs/vscode.md`.
 
 ## IntelliJ setup guide (FR-504)
+
+- Automated: none.
 
 Open: not written yet (M6).
 

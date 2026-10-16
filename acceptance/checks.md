@@ -37,6 +37,14 @@ Decisions for the whole area:
   the duplicate is reported.
 - Q5 (to confirm): steps of a duplicated use case are not reported as
   uncovered.
+- Code: the message names the other declarations, for example
+  `ID FR-901 is declared more than once, also at functional.md:3`; the
+  diagnostic sits on the ID. Confirms Q5: steps of a duplicated use case are
+  not reported as uncovered.
+- Automated: `fr_100_duplicate_ids_reported_at_each_declaration`,
+  `fr_100_links_from_duplicated_items_are_evaluated`,
+  `fr_100_to_fr_119_broken_example_matches_expected` (checks tests);
+  `fr_100_duplicate_ids_resolve_to_no_item` (core project.rs).
 
 ### TC-100 A duplicate ID is reported at every declaration
 ver: FR-100
@@ -88,6 +96,11 @@ Then `UC-901` gets `duplicate-id` twice and step `s5` no `uncovered-step`
   links and mentions alike.
 - Q5 (to confirm): a link value that is no valid ID (`impl: foo`, `FR-12`,
   `FR-?`) is a `dangling-ref` error.
+- Code: confirms Q5. A link value that is no valid ID gets the message
+  `"foo" is not a valid item ID or step reference`; findings on mentions
+  start with `mention:`.
+- Automated: `fr_101_dangling_links_and_mentions`,
+  `fr_101_override_applies_to_links_and_mentions` (checks tests).
 
 ### TC-103 Missing link targets are errors, missing mentions warnings
 ver: FR-101
@@ -124,6 +137,14 @@ Then each value is a `dangling-ref` error (Q5, to confirm).
   fields, not unknown keys.
 - Gap: "a line directly after an item heading" can mean only the first
   line or every line of the metadata block (TC-108).
+- Code: every unknown key of the metadata block is reported, on any line and
+  in any pair; on the first line it also means that there is no block
+  (FR-003, TC-108).
+- Automated: `fr_102_unknown_metadata_key_names_allowed_keys`,
+  `fr_102_unknown_key_directly_after_heading`,
+  `fr_102_body_field_keys_are_not_unknown` (checks tests);
+  `fr_102_unknown_first_key_is_recorded_without_metadata_block`,
+  `fr_102_unknown_key_in_later_pair` (core parse.rs).
 
 ### TC-106 An unknown key is reported with the allowed keys
 ver: FR-102
@@ -168,6 +189,10 @@ is read there (and reported as `invalid-value`), and whether `owner` on the
 second line counts as "directly after the heading", is not specified
 (Gap): note what happens.
 
+Code: in the first variant `owner` is reported and `prio: high` is not read,
+so there is no `invalid-value`. In the second variant `owner` on the second
+line is reported too.
+
 ### TC-109 A body field key directly after the heading is no unknown key
 ver: FR-102, FR-005
 
@@ -182,6 +207,9 @@ Then nothing is reported either time.
 ## Invalid value (FR-103)
 
 - Gap: whether values are case-sensitive (`status: Draft`).
+- Code: values are compared case-sensitively, so `Draft` is an
+  `invalid-value` error (TC-111).
+- Automated: `fr_103_invalid_value_lists_allowed_values` (checks tests).
 
 ### TC-110 A value outside the value set is reported with the allowed values
 ver: FR-103
@@ -204,7 +232,11 @@ When `requimd check` runs.
 Then `actor` accepts any value. For `Draft` the spec is silent (Gap): note
 what happens.
 
+Code: `Draft` is an `invalid-value` error: values are case-sensitive.
+
 ## Link target type (FR-104)
+
+- Automated: `fr_104_link_target_type` (checks tests).
 
 ### TC-112 Links to targets of a type that is not allowed
 ver: FR-104
@@ -230,6 +262,11 @@ and steps, `ver` only to functional and quality requirements and stories);
 - Q5 (to confirm): a required key counts as present if `[defaults]` sets
   it.
 - Gap: whether several missing keys give one diagnostic or one each.
+- Code: one diagnostic per item lists all missing keys
+  (`lacks required keys: meter, must or plan`). A key counts as present with
+  an empty value (`meter:`), as a body field, or through `[defaults]`
+  (confirms Q5).
+- Automated: `fr_105_required_keys_with_alternatives` (checks tests).
 
 ### TC-113 Missing required keys are reported at the heading
 ver: FR-105
@@ -240,6 +277,8 @@ When `requimd check` runs.
 
 Then `missing-key` errors at the heading of `NFR-901` name `meter` and
 `must|plan`.
+
+Code: one diagnostic, `NFR-901 lacks required keys: meter, must or plan`.
 
 ### TC-114 Either key of `a|b` is enough
 ver: FR-105
@@ -265,6 +304,10 @@ When `requimd check` runs.
 Then nothing is reported (Q5, to confirm).
 
 ## Uncovered steps (FR-106)
+
+- Code: `impl` links from placeholders, duplicates and deprecated items
+  cover a step; only an `impl` link to the step itself counts.
+- Automated: `fr_106_uncovered_steps` (checks tests).
 
 ### TC-116 A step without an `impl` link is reported
 ver: FR-106
@@ -311,6 +354,8 @@ Validate: both points; the spec makes no exception for either.
 
 ## Duplicate step labels (FR-107)
 
+- Automated: `fr_107_duplicate_step_labels` (checks tests).
+
 ### TC-119 A label used twice in one use case
 ver: FR-107
 
@@ -327,6 +372,11 @@ cases is no finding.
 
 - Gap: whether a link of an item to itself (`ref` from `FR-901` to
   `FR-901`) is a cycle.
+- Code: cycles are found as strongly connected components of the `ref`
+  links. A link of an item to itself is a cycle (TC-121); a `ref` to a step
+  counts as a `ref` to its use case.
+- Automated: `fr_108_ref_cycles_reported_at_every_link`,
+  `fr_108_no_cycle_without_back_link` (checks tests).
 
 ### TC-120 A `ref` cycle is reported at every link of it
 ver: FR-108
@@ -349,11 +399,18 @@ When `requimd check` runs each time.
 Then the `ver` loop is no `ref-cycle`. For the self reference the spec is
 silent (Gap): note what happens.
 
+Code: the self reference is a `ref-cycle` error.
+
 ## Status consistency (FR-109)
 
 - Gap: steps have no status. Whether an approved item with `impl` to a
   step of a draft use case gets a warning (using the use case's status) is
   not specified.
+- Code: a step target has the status of its use case, so an approved item
+  with `impl` to a step of a draft use case gets the warning (TC-123). An
+  item without `status` counts with the default `draft`.
+- Automated: `fr_109_approved_item_links_to_draft_or_deprecated` (checks
+  tests).
 
 ### TC-122 An approved item that links to a draft or deprecated item
 ver: FR-109
@@ -378,6 +435,9 @@ When `requimd check` runs after each change.
 Then no warning for review to draft, none for the mention. For the step
 link the spec is silent (Gap): note what happens.
 
+Code: the step link gets a `status-link` warning, since a step has the
+status of its use case (draft).
+
 ## Weak words (FR-110)
 
 - Log 2026-10-09: weak words are checked in titles too; word forms are
@@ -389,6 +449,20 @@ link the spec is silent (Gap): note what happens.
   typographic quotes are ignored like straight ones.
 - Gap: single quotes are not ignored, only double quotes. Apostrophes and
   single quotes are common in German and English text.
+- Code: a hyphen or an underscore belongs to the word, so "fast-track" or
+  "non-robust" do not match "fast" or "robust". German quotes „…“ are
+  ignored like “…”; guillemets and single quotes are not. Every HTML comment
+  is ignored. The text includes steps, body fields and lower-level headings
+  of the item. A configured word without reason reports
+  `weak word (no reason given)`.
+- Automated: `fr_110_weak_words_in_title_and_text`,
+  `fr_110_message_states_reason`,
+  `fr_110_ignores_code_quotes_ids_and_metadata`,
+  `fr_110_configured_words_extend_defaults` (checks tests);
+  `fr_110_configured_words_extend_built_in_list` (core config.rs);
+  `fr_110_whole_words_case_insensitive`,
+  `fr_110_phrases_match_across_whitespace`, `fr_110_punctuation_in_entries`,
+  `fr_110_quotes_and_comments_are_ignored` (core words.rs).
 
 ### TC-124 Every built-in weak word is reported with its reason
 ver: FR-110
@@ -481,6 +555,10 @@ are reported; with the `allow` entry only "seamless".
   in quotes.
 - Gap: whether the title counts as text, and whether "Shall" counts
   (case).
+- Code: "shall" is matched as a whole word, ignoring case, in the text after
+  the metadata block; the title does not count; quotes and HTML comments
+  count, code does not (TC-131).
+- Automated: `fr_111_functional_requirement_without_shall` (checks tests).
 
 ### TC-130 A functional requirement without "shall"
 ver: FR-111
@@ -505,7 +583,12 @@ When `requimd check` runs each time.
 Then the quoted "shall" counts (Q7); inline code does not (`no-shall`).
 Title and capital "Shall" are not specified (Gap): note what happens.
 
+Code: the title "The cart shall open" does not count, so `no-shall` is
+reported; "Shall" with a capital counts.
+
 ## EARS patterns (FR-112)
+
+- Automated: none.
 
 `could`, not implemented; on the "Later" list of `docs/roadmap.md`
 together with EARS keyword highlighting (FR-216). No tests yet.
@@ -515,6 +598,11 @@ together with EARS keyword highlighting (FR-216). No tests yet.
 - Q7 (to confirm): the first paragraph must start with "As a" or "As an"
   and contain "I want" followed by "so that", ignoring case and line
   breaks; the comma is not required.
+- Code: the field name `ac` is fixed in the code, like the type names of Q7.
+  The first paragraph ends at the first blank line; "I want" must be
+  followed by a space and "so that" surrounded by spaces.
+- Automated: `fr_113_user_story_pattern_and_acceptance_criteria` (checks
+  tests).
 
 ### TC-132 A story that does not follow the pattern
 ver: FR-113
@@ -560,6 +648,10 @@ Then first one `story-pattern` warning for the missing `ac`; then two.
 - Log 2026-10-09: aliases are checked in titles too.
 - Log 2026-10-12: an alias inside a term is not reported.
 - Unlike FR-110, the check applies to every item type.
+- Code: an alias inside an occurrence of a longer alias is not reported
+  either.
+- Automated: `fr_114_glossary_aliases_in_any_item`,
+  `fr_114_alias_inside_a_term_is_not_reported` (checks tests).
 
 ### TC-135 An alias is reported with the preferred term
 ver: FR-114
@@ -601,6 +693,8 @@ Then nothing is reported: "basket" is part of the term "Basket fee".
 
 ## Remaining placeholders (FR-115)
 
+- Automated: `fr_115_placeholder_reported_at_heading` (checks tests).
+
 ### TC-138 A placeholder is reported until it gets an ID
 ver: FR-115
 
@@ -634,6 +728,24 @@ Then first a `placeholder` warning at the heading; after `fmt` the item has
   (the link still exists, now dangling).
 - Validate: a link changed by hand (source ID edited without rename) loses
   its review state silently; the new link is recorded as reviewed.
+- Code: the hash of an item covers everything after the metadata block up to
+  the end of the item: text, steps, lower-level headings, code blocks and
+  HTML comments. So adding an inline allow marker to a target ("allow here",
+  FR-219) makes its incoming links suspect.
+- Code: the lock entry of a link whose target was deleted is kept while the
+  link exists (gap above); if the target comes back with other content, the
+  link is suspect. Links with an invalid target are not recorded. The
+  message reads
+  `FR-902 changed since this link was last reviewed; check TC-901 and mark the link as reviewed`.
+- Automated: `fr_116_suspect_link_after_target_change` (checks tests);
+  `fr_116_check_records_links_and_reports_changed_targets` (cli tests);
+  `fr_116_hash_ignores_whitespace_and_line_endings`,
+  `fr_116_new_links_recorded_existing_hashes_kept_vanished_removed`,
+  `fr_116_no_entries_for_items_without_unique_id`,
+  `fr_116_item_hash_covers_title_metadata_body_but_not_status`,
+  `fr_116_lock_file_roundtrip_is_sorted` (core lock.rs);
+  `fr_116_fr_218_suspect_links_over_protocol` (lsp tests); also checked in
+  Neovim (`scripts/nvim-check.lua`).
 
 ### TC-139 New links are recorded silently
 ver: FR-116
@@ -714,6 +826,10 @@ duplicate. After `requimd fmt` (ID for the placeholder) and the next
 
 - Gap: an invalid severity value (`uncovered-step = "loud"`) is not
   specified; Q5 makes unknown check IDs a configuration error.
+- Code: an invalid severity is a configuration error with exit code 2
+  (TC-146).
+- Automated: `fr_117_severity_override_and_off` (checks tests);
+  `fr_117_invalid_check_settings_are_config_errors` (core config.rs).
 
 ### TC-145 Severity as string or as table, and `off`
 ver: FR-117
@@ -748,11 +864,18 @@ When `requimd check` runs each time.
 Then the unused marker is not reported. For the invalid severity the spec
 is silent (Gap): note what happens.
 
+Code: `uncovered-step = "loud"` stops the check with a configuration error,
+exit code 2.
+
 ## Modal verbs (FR-118)
 
 - Log 2026-10-09: modal verbs are a separate check (ADR-0005).
 - Gap: FR-118 says configured `words` extend the list, but not their form;
   weak words use `{ w = …, why = … }`.
+- Code: `words` entries are strings or `{ w, why }` tables; a reason is
+  ignored for modal verbs. The message reads
+  `"should": use "shall" for a requirement`.
+- Automated: `fr_118_modal_verbs_in_functional_requirements` (checks tests).
 
 ### TC-147 Modal verbs other than "shall" are reported
 ver: FR-118
@@ -793,6 +916,18 @@ list or marker silences it.
   allowed phrase silences the weak word inside it, while FR-119 speaks of
   "the word or phrase" that is in the list. Whether allow entries are
   case-insensitive is not specified.
+- Code: allow-list and marker entries match like weak words, ignoring case
+  and as phrases. An occurrence is allowed if it lies inside an occurrence
+  of an allowed entry, so "Fast Track" silences "Fast" within it (TC-153). A
+  marker covers findings that start on its line, and its entry must be found
+  on that line before the marker; a phrase split over two lines is reported,
+  and its entry is `unused-allow` (TC-151). Markers inside code are ignored.
+- Automated: `fr_119_project_allow_list`,
+  `fr_119_inline_markers_and_unused_entries`,
+  `fr_119_markers_in_code_are_ignored`,
+  `fr_100_to_fr_119_broken_example_matches_expected` (checks tests);
+  `fr_119_invalid_language_options_are_config_errors` (core config.rs);
+  `fr_119_inline_markers` (core words.rs).
 
 ### TC-149 The project allow list of each check
 ver: FR-119
@@ -848,6 +983,9 @@ phrase split over two lines, the spec is silent: note what happens.
 
 Validate: a marker covers one physical line, not a sentence.
 
+Code: the phrase split over two lines is reported, and the marker entry "as
+needed" gets `unused-allow`.
+
 ### TC-152 Unused marker entries are reported
 ver: FR-119
 
@@ -874,3 +1012,5 @@ When `requimd check` runs each time.
 Then "Fast" in "Fast Track" is not reported, the second "fast" is (as in
 the example of FR-110). With the lower-case entry, the spec is silent
 (Gap): note what happens.
+
+Code: the lower-case entry works the same: allow entries ignore case.
