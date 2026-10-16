@@ -1,0 +1,300 @@
+# Acceptance tests: command line
+
+Tests for the commands of FR-300 to FR-308, run in a terminal in a fresh
+copy of the base project. In PowerShell, `$LASTEXITCODE` shows the exit
+code of the last command.
+
+Decisions for the whole area:
+
+- ADR-0003: `clap` for the command line, `serde_json` for JSON output.
+- Gap: the spec has no requirement for `requimd --help` and
+  `requimd --version`. Users need the version to report problems, and the
+  VS Code extension carries the same version (FR-501).
+
+## Check command (FR-300)
+
+- Log 2026-10-11: `requimd check [paths]` loads the whole project; the
+  paths only filter the output; paths of different projects are a usage
+  error.
+- Log 2026-10-12: `check` adds and removes lock entries but never changes
+  a hash; `--locked` for CI; an unreadable lock stops the check with exit
+  code 2 (ADR-0007).
+- Q5 (to confirm): columns count bytes, as compilers and Vim's quickfix
+  list do, so an umlaut before the position shifts the column.
+- Gap: the spec does not say what the file path in the output is relative
+  to (current directory or project root), nor how lines are ordered.
+- Gap: with `--locked`, exit code 1 means either errors or an outdated
+  lock file; only the message tells them apart.
+
+### TC-300 Output format and exit codes
+ver: FR-300
+
+Given the base project; then `FR-901` with a second metadata line
+`ref: FR-999`; then instead `FR-901` with the word "fast" in its text (a
+warning only).
+
+When `requimd check` runs each time.
+
+Then first no output and exit code 0. Then one line of the form
+`functional.md:5:<column>: error: <message> [dangling-ref]` and exit code
+1. With the warning only, one `warning` line and exit code 0.
+
+### TC-301 Columns and non-ASCII text
+ver: FR-300
+
+Given `FR-901` with the text "Die Größe der Übersicht shall be fast." (the
+umlauts before the weak word).
+
+When `requimd check` runs.
+
+Then the column of "fast" counts bytes, so it is 3 higher than the
+character position (Q5, to confirm).
+
+Validate: whether an analyst expects characters; editors jump correctly
+either way through the language server.
+
+### TC-302 Paths filter the output; the whole project is loaded
+ver: FR-300
+
+Given `FR-901` with `ref: FR-999` and `UC-901` with an uncovered step
+`- s3: Customer pays.`; a second project in another folder (a second copy
+of the base project).
+
+When `requimd check functional.md`; then the same command with a second
+argument, the path of a file in the other project.
+
+Then the first run prints only the error in `functional.md`, not the
+warning in `usecases.md`, and the links into `usecases.md` resolve. The
+second ends with a usage error, exit code 2.
+
+### TC-303 The check keeps the lock file up to date
+ver: FR-300, FR-116, FR-212
+
+Given the base project checked once.
+
+When `FR-901` gets `ref: FR-902`, `TC-901` loses its `ver` line, a new item
+`## FR-904 Payment` with `impl: UC-901.s1` is added, and `requimd check`
+runs.
+
+Then `requimd.lock` has a new line `"FR-901 ref FR-902"`, no line for
+`TC-901` and `FR = 904` in `[ids]`; the hashes of all other lines are
+unchanged.
+
+### TC-304 `--locked` writes nothing and fails on an outdated lock
+ver: FR-300
+
+Given the base project checked once.
+
+When `requimd check --locked` runs; then `FR-901` gets `ref: FR-902` and
+`requimd check --locked` runs again.
+
+Then the first run ends with 0. The second ends with 1 and a message about
+the outdated lock; `requimd.lock` is unchanged (content and time stamp).
+
+### TC-305 An unreadable lock file stops the check
+ver: FR-300
+
+Given the base project checked once; merge conflict markers in
+`requimd.lock`:
+
+```text
+<<<<<<< HEAD
+"FR-901 impl UC-901.s1" = "0000000000000000"
+=======
+"FR-901 impl UC-901.s1" = "1111111111111111"
+>>>>>>> other
+```
+
+When `requimd check` runs.
+
+Then it prints the reason and ends with exit code 2; `requimd.lock` is
+unchanged.
+
+## Machine-readable output (FR-301)
+
+- Gap: the fields of a JSON diagnostic, and whether line and column are
+  0- or 1-based and in bytes, are not specified. A consumer such as a CI
+  annotation script depends on them.
+
+### TC-306 `--format json` prints a JSON array
+ver: FR-301
+
+Given `FR-901` with `ref: FR-999` and the word "fast"; then the base
+project unchanged.
+
+When `requimd check --format json` runs each time.
+
+Then first a valid JSON array with two entries carrying file, position,
+severity, message and check ID; then `[]`. The exit codes are as without
+`--format`.
+
+## Strict mode (FR-302)
+
+### TC-307 `--strict` turns warnings, not infos, into a failure
+ver: FR-302
+
+Given `FR-901` with the word "fast"; then instead `FR-901` with the text
+"The cart opens." (only the `no-shall` info).
+
+When `requimd check --strict` runs each time.
+
+Then exit code 1 for the warning; 0 for the info.
+
+## Init command (FR-303)
+
+- Gap: the name and place of the glossary file are not specified, nor the
+  exit code and message when files already exist, nor what happens inside
+  an existing project (a nested project, TC-032).
+
+### TC-308 `init` creates a commented configuration and a glossary
+ver: FR-303, FR-014
+
+Given an empty folder.
+
+When `requimd init` runs; then `requimd check`.
+
+Then the folder has a `requimd.toml` with the default configuration and
+comments, and an empty glossary file that the configuration names. The
+check ends with exit code 0.
+
+### TC-309 `init` overwrites nothing
+ver: FR-303
+
+Given TC-308 done; a comment line `# mine` added to `requimd.toml` and a
+term `## Cart` to the glossary.
+
+When `requimd init` runs again.
+
+Then both files keep their content. Note the message and exit code (Gap).
+
+## Format command (FR-304)
+
+- Gap: the normal form of separators is not specified (two spaces, as in
+  the examples of the spec?). The order in which several placeholders get
+  their IDs, across files, is not specified. Whether `fmt` raises `[ids]`
+  in the lock file, so that an ID it assigned cannot be assigned again
+  before the next `check`, is not specified (BR-002).
+
+### TC-310 `fmt` replaces placeholders by the next free IDs
+ver: FR-304, FR-212
+
+Given the base project checked once, and at the end of `functional.md`:
+
+```markdown
+## FR-? Payment
+The system shall accept payment.
+
+## FR-? Refund
+The system shall refund payments.
+```
+
+When `requimd fmt` runs.
+
+Then the headings become `FR-904` and `FR-905`. Note whether
+`requimd.lock` now has `FR = 905` (Gap).
+
+### TC-311 `fmt` normalises separators in metadata blocks
+ver: FR-304
+
+Given the metadata line of `FR-901` with a tab between the pairs, and that
+of `FR-902` with five spaces; the text of `FR-903` with double spaces
+between words.
+
+When `requimd fmt` runs.
+
+Then both metadata lines use the same separator (note which, Gap); the
+text of `FR-903` is unchanged.
+
+### TC-312 `fmt --check` reports without changing
+ver: FR-304
+
+Given TC-310's placeholders in place.
+
+When `requimd fmt --check`; then `requimd fmt`; then `requimd fmt --check`
+again.
+
+Then the first run changes no file and ends with 1; the last ends with 0.
+
+## Show command (FR-305)
+
+- Q7 (to confirm): exit code 1 if the ID does not exist or is declared
+  more than once, 2 if the argument is no ID.
+- Gap: the output format is not specified.
+
+### TC-313 `show` prints the item and its references in both directions
+ver: FR-305
+
+Given the base project.
+
+When `requimd show FR-902`; then `requimd show UC-901.s2`.
+
+Then `FR-902`: title, type, status and text; outgoing the `impl` link to
+`UC-901.s2` and the mention of `BR-901`; incoming `ref` from `NFR-901`
+and `ver` from `TC-901`. `UC-901.s2`: the step text and `FR-902` as
+implementing item.
+
+### TC-314 Exit codes of `show`
+ver: FR-305
+
+Given a new file `a.md` with `## FR-901 Copy`.
+
+When `requimd show FR-999`; `requimd show FR-901`; `requimd show hello`.
+
+Then exit codes 1, 1 and 2, each with a message (Q7, to confirm).
+
+## Coverage command (FR-306)
+
+- Gap: a total over all use cases, the treatment of extension steps and
+  of deprecated use cases are not specified.
+
+### TC-315 Coverage per use case with the uncovered steps
+ver: FR-306
+
+Given the base project; then in `usecases.md` a new step for `UC-901`
+and a new use case:
+
+```markdown
+- s3: Customer pays.
+
+## UC-902 Return goods
+- s1: Customer returns goods.
+```
+
+When `requimd coverage` runs each time.
+
+Then first `UC-901` with 3 steps, 3 covered. Then `UC-901` 4 steps, 3
+covered, uncovered `s3`; `UC-902` 1 step, 0 covered, uncovered `s1`.
+
+## Review command (FR-307)
+
+- Log 2026-10-12: `requimd review --all` marks all suspect links as
+  reviewed.
+- Gap: the result for an unknown ID, and for an item without suspect
+  links, is not specified.
+
+### TC-316 `review <ID>` marks the suspect links from and to an item
+ver: FR-307, FR-116
+
+Given the base project checked once; the text of `FR-902` and of step
+`s2` of `UC-901` changed.
+
+When `requimd review FR-902`; then `requimd check`.
+
+Then `review` prints the links it marks: `ref: FR-902` of `NFR-901`,
+`ver: FR-902` of `TC-901`, and the outgoing `impl: UC-901.s2` of `FR-902`
+itself. The check reports no `suspect-link` any more.
+
+Validate: reviewing the changed item also clears its own outgoing suspect
+links, whose targets the analyst may not have looked at.
+
+### TC-317 `review --all` and nothing to review
+ver: FR-307
+
+Given TC-316's changes, without the review.
+
+When `requimd review --all`; then `requimd review --all` again; then
+`requimd review FR-999`.
+
+Then the first run prints the three links; the second prints nothing.
+For the unknown ID the spec is silent (Gap): note the message and exit
+code.

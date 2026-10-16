@@ -1,7 +1,7 @@
 # requimd configuration. Makes this repository a requimd project (dogfooding).
 
 [project]
-include = ["requirements/**/*.md"]
+include = ["requirements/**/*.md", "acceptance/**/*.md"]
 glossary = "requirements/glossary.md"
 
 [ids]

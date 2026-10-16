@@ -1,0 +1,6 @@
+# Base project for the acceptance tests in `acceptance/` (see
+# docs/testing-guide.md). Copy it before testing; the tests change its files.
+# Everything not set here uses the built-in defaults (FR-014).
+
+[project]
+glossary = "glossary.md"
