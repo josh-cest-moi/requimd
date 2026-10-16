@@ -85,8 +85,10 @@ As of 2026-10-16. Update this file at the end of every working session.
   FR-405; each requirement section names its automated tests and the
   decisions found only in the code (tag Code); base project
   `examples/acceptance/`; verdicts go into `docs/verification-v0.1.0.md`.
-  Next: a report on open and possible features, then consolidating the
-  spec, vision and scope, and the roadmap of v0.1.0.
+  `docs/feature-report.md` lists the open, planned and possible features
+  with a proposal for v0.1.0. Next: the owner's verdicts and decisions,
+  then consolidating the spec, vision and scope, and the roadmap of
+  v0.1.0.
 
 ## Decision log
 
@@ -259,7 +261,8 @@ As of 2026-10-16. Update this file at the end of every working session.
 1. Owner: verify the specification with `docs/testing-guide.md` and record
    the verdicts in `docs/verification-v0.1.0.md`; this includes the open
    interpretations above (business questions 5 to 12) and the code
-   findings in section 7 of the guide. Then the report on open features.
+   findings in section 7 of the guide. Decide the scope of v0.1.0 with
+   `docs/feature-report.md` (section G, and the questions in section F).
 2. Alpha release `v0.1.0-alpha.2` (FR-216, FR-403, FR-404 since
    alpha.1): check the release job and the four archives, then review and
    test the tool on a real project. Further rounds: bump to `-alpha.3`
