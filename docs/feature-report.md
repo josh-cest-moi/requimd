@@ -12,11 +12,16 @@ product owner decides.
   decisions (2), possible features found during the verification (10),
   release readiness (9), and open questions that decide several entries
   at once (5).
-- **Three questions decide much of the rest:**
-  - the language of requirement texts: today only English is supported,
-    and nothing in the specification says so (F1);
-  - which verification methods count (F2);
-  - whether design decisions become items (F3).
+- **Five questions decided much of the rest** (section F, decided with the
+  product owner on 2026-10-16):
+  - requirement texts in German and English through configurable
+    language checks, in v0.1.0 (F1);
+  - every `ver` link is a verification record, with a `method` (F2);
+  - v0.1.0 covers requirements; a design level is the long-term goal
+    (F3);
+  - fixed names are specified, the language checks get configurable
+    (F4);
+  - offline by default, network only for explicit opt-in commands (F5).
 - **Proposal:** v0.1.0 is about trust, not new capabilities:
   - a verified specification;
   - no silent failures when writing (D1, D2, D5, D6);
@@ -58,7 +63,7 @@ including tests and spec text:
 | # | Feature | Source | Value | Effort | Depends on | Proposal |
 |---|---------|--------|-------|--------|------------|----------|
 | A1 | IntelliJ setup guide (FR-504) | M6, `should` | O1 for IntelliJ users | M | IntelliJ IDEA with LSP4IJ | next, unless your analysts use IntelliJ |
-| A2 | EARS patterns with hover and highlighting (FR-112) | `could`, "Later" | wording quality | M | F1 | later |
+| A2 | EARS patterns with hover and highlighting (FR-112) | `could`, "Later" | wording quality | M | F1: keywords configurable per language | later |
 
 **A1:** the effort is mostly manual: following the guide in IntelliJ and
 checking each feature, as `docs/neovim.md` did for Neovim. No code change
@@ -80,13 +85,13 @@ ADR-0007.
 | B1 | Issue tracker links such as `jira: SHOP-412` | O4 | M | link keys to external IDs with a URL template; offline, so their targets are not checked (NFR-006) | later |
 | B2 | Test results from JUnit XML, shown as pass or fail, for example on the site | O2, O5 | L | F2, F3; how automated tests are matched to items | later |
 | B3 | Dedicated IntelliJ plugin | O1 | L | A1; demand | on demand |
-| B4 | AI review for ambiguity and contradictions (stage 3 of ADR-0005) | wording quality | L | F5: needs the network unless a local model is used; not for CI | on demand |
-| B5 | More pattern rules: comparatives without reference, passive voice without actor | wording quality | M each | F1; false positives | later |
+| B4 | AI review for ambiguity and contradictions (stage 3 of ADR-0005) | wording quality | L | F5: an explicit opt-in command with its own ADR; not for CI | on demand |
+| B5 | More pattern rules: comparatives without reference, passive voice without actor | wording quality | M each | F1: patterns configurable per language; false positives | later |
 | B6 | Show what changed in the target of a suspect link, from git history | O3 | M | the `git` command, as in FR-403 | next |
 | B7 | A `suspect` modifier in highlighting | O3 | S | FR-216, FR-503 | next |
 | B8 | Glossary entry stub: a code action on a selected word | O1 | S | – | next |
-| B9 | Design layer: ADRs and other decisions as items, linked to requirements | O4 | L | F3; a new ADR | later |
-| B10 | Unverified requirements: a check on items that no item links to with `ver` | O2 | S to M | F2 | next |
+| B9 | Decisions as items, linked to requirements | O4 | M | F3; an ADR on the traceability model | after v0.1.0: decide whether this comes before the design layer |
+| B10 | Unverified requirements: a check on items that no item links to with `ver` | O2 | S to M | F2: any `ver` link counts | next |
 | B11 | Glossary navigation: go to definition and find references on terms and aliases | O1 | S | – | next |
 | B12 | Near-miss IDs: a warning on headings such as `## FR-12 Title` | O2 | S | – | v0.1.0, as part of D1 |
 | B13 | Changelog page on the site, `export site --since <ref>` | O4, O5 | M | FR-403 | next |
@@ -128,9 +133,9 @@ of silent behaviour rather than features.
 | D5 | Control over the files of a project: exclude patterns, nested projects left out, possibly `.gitignore` (TC-032) | O2: no findings from unrelated files | S, `.gitignore` M | `.gitignore` needs one more library | v0.1.0 for exclude and nested projects, `.gitignore` next |
 | D6 | `requimd fmt` records the IDs it assigns in the lock file (TC-310) | BR-002 | S | – | v0.1.0 |
 | D7 | Inline allow markers do not count in the hash of a suspect link (FR-116) | O3: no false suspect links | S | changes the hash of every item with a marker, so it must come before E4 | decide for v0.1.0 |
-| D8 | Fixed type and key names (`usecase`, `functional`, `impl`, `ac` …): specify them as fixed, or make them configurable | robustness | S (spec) or L | F4 | v0.1.0: specify; configurable on demand |
-| D9 | Site: labels in other languages; files of an earlier export removed | O5 | S to M | F1 | stale files next, labels later |
-| D10 | Requirement texts in another language than English: word lists, modal verbs, "shall", the story pattern | O1, O2 for non-English teams | L | F1 | decide (F1) |
+| D8 | Fixed type and key names (`usecase`, `functional`, `impl`, `ac` …): specify them as fixed, or make them configurable | robustness | S | F4 | v0.1.0: specify; type scope of the language checks and the `ac` field configurable with D10; structural names with the traceability model |
+| D9 | Site: labels in other languages; files of an earlier export removed | O5 | S | F1: output stays English | stale files next; labels dropped |
+| D10 | Requirement texts in another language than English: word lists, modal verbs, "shall", the story pattern | O1, O2 for non-English teams | M | F1 | v0.1.0: configurable, English shipped |
 
 **D1:** each slip silently turns a requirement or a link into plain text,
 which is exactly what requimd promises to catch (O2). One check, for
@@ -146,8 +151,10 @@ affected.
 info on every requirement, and "soll", "kann" or "schnell" go unnoticed
 unless added to `requimd.toml`: weak words and modal verbs can be
 configured today, while "shall", the default lists and the story pattern
-are English. Whether requimd supports other languages, and how (lists per
-language, or English only by design), is F1.
+are English. Decided in F1: everything English becomes configurable
+(required verb, story pattern, built-in lists switched off, an own check
+ID for a missing `ac`); requimd ships English only, and the documentation
+gets a German example configuration.
 
 ## E. Release readiness for v0.1.0
 
@@ -170,27 +177,49 @@ possible. Analysts will nevertheless commit `requimd.toml` and
 `requimd.lock` to their repositories. A short ADR that says what may
 change and how requimd handles an older lock file avoids surprises.
 
-## F. Open questions that decide several entries
+## F. Questions that decide several entries
 
-| # | Question | Decides | Note |
-|---|----------|---------|------|
-| F1 | Which languages can requirement texts be written in? | A2, B5, D9, D10 | Today only English is supported, and the spec does not say so. |
-| F2 | Which verification records count, and should a requirement state its method (open business question 11)? | B2, B10 | The acceptance tests (`TC` items) are one kind of record. |
-| F3 | Design between requirements and tests (open business question 12; proposal there: option 2, decisions as items) | B2, B9 | |
-| F4 | Fixed names in the code (technical question 1) | D8 | |
-| F5 | May an optional command use the network (NFR-006)? | B4, possibly B1 | |
+Decided with the product owner on 2026-10-16 and recorded in the decision
+log of `docs/status.md`.
+
+| # | Question | Decision | Affects |
+|---|----------|----------|---------|
+| F1 | Which languages can requirement texts be written in? | German and English, through configuration: the required verb, the story pattern and the built-in lists become configurable, a missing `ac` gets its own check ID; English is shipped. Messages, hover and site stay English. In v0.1.0. | A2, B5, D9, D10 |
+| F2 | Which verification records count, and should a requirement state its method (open business question 11)? | Every item with a `ver` link; records get a `method` key (test, inspection, analysis, demonstration) in the defaults, in v0.1.0. No `verify:` on requirements for now. | B2, B10 |
+| F3 | Design between requirements and tests (open business question 12) | v0.1.0 covers requirements only. The long-term goal is a model with requirement and design level, recorded in the vision. After v0.1.0, decide whether decisions as items (B9) come first or the design layer directly; an ADR on the traceability model comes first and decides status values per type. | B2, B9 |
+| F4 | Fixed names in the code (technical question 1) | The spec records them as current behaviour, not as a lasting promise. With F1, the type scope of the language checks and the name of the `ac` field become configurable; the structural names (`usecase`, `impl`, `ref`, `ver`, `status`) follow with the traceability model. | D8 |
+| F5 | May an optional command use the network (NFR-006)? | Offline by default: NFR-006 covers all commands from v0.1.0; a future command may use the network only when invoked explicitly and configured, with its own ADR; `check`, `fmt` and `lsp` stay offline. | B4, possibly B1 |
+
+### Spec changes that follow
+
+For the consolidation (E3), each in a `spec/` pull request:
+
+- `requirements/vision.md`: users write in German and English; the design
+  level as long-term goal (E2).
+- FR-110, FR-118: built-in lists can be switched off; the item types a
+  check applies to are configurable.
+- FR-111: the required verb is configurable ("shall" by default).
+- FR-113: the story pattern is configurable; a missing `ac` field gets its
+  own check ID, and the field name is configurable.
+- FR-014: the type `test` gets the key `method` with its value set; the
+  new check IDs.
+- A requirement, or text in FR-014, on the names with a fixed meaning.
+- NFR-006: the scale covers all commands; the opt-in principle.
+- ADR candidates: the language configuration (F1) and the network
+  principle (F5).
 
 ## G. Proposal
 
 | When | Entries |
 |------|---------|
-| v0.1.0 | E1 to E9; D1 (with B12), D3, D4, D5 (exclude, nested projects), D6; decided: D2, D7, D8 (specified), C2 (whether public), F1 |
-| next | A1, B6, B7, B8, B10 (after F2), B11, B13, B14, B15, C1, C2 (build), D5 (`.gitignore`), D9 (stale files) |
-| later | A2, B1, B2, B5, B9, D9 (labels), D10 (after F1) |
+| v0.1.0 | E1 to E9; D1 (with B12), D3, D4, D5 (exclude, nested projects), D6, D8 (specified), D10 with the configurable scope of D8 (F1, F4); the `method` key (F2); NFR-006 for all commands (F5); still to decide: D2, D7, C2 (whether public) |
+| next | A1, B6, B7, B8, B10, B11, B13, B14, B15, C1, C2 (build), D5 (`.gitignore`), D9 (stale files); the ADR on the traceability model, with the choice between B9 and the design layer (F3) |
+| later | A2, B1, B2, B5, B9 or the design layer (F3) |
 | on demand | B3, B4 |
+| dropped | D9 (site labels in other languages, F1) |
 
-The new code for v0.1.0 is mostly small (S); D1 and E3 take a few days
-each. Every entry would become its own pull request, with a `spec/` part
-first where requirements change. Decisions on F1 to F5, D2, D7, D8 and C2
-go into the decision log of `docs/status.md`, and the result into
-`docs/roadmap.md`, step 4 of section 1 of the testing guide.
+The new code for v0.1.0 is mostly small (S); D1, D10 and E3 take a few
+days each. Every entry would become its own pull request, with a `spec/`
+part first where requirements change. The decisions on F1 to F5 are in
+the decision log of `docs/status.md`; D2, D7 and C2 follow. The result
+goes into `docs/roadmap.md`, step 4 of section 1 of the testing guide.

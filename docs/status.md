@@ -95,6 +95,11 @@ As of 2026-10-16. Update this file at the end of every working session.
 | Date | Decision | Where recorded |
 |------|----------|----------------|
 | 2026-10-16 | Before v0.1.0, the owner verifies the spec: testing guide in two phases (spec, then code), report on open features, then spec consolidation, vision and scope, roadmap | `docs/testing-guide.md` |
+| 2026-10-16 | F1: analysts write requirements in German and English. In v0.1.0 everything English in the language checks becomes configurable (required verb, story pattern, built-in lists can be switched off, own check ID for a missing `ac`); requimd ships English only. Messages, hover and site stay English | `docs/feature-report.md` F1 |
+| 2026-10-16 | F2: every item with a `ver` link is a verification record; records get the key `method` (test, inspection, analysis, demonstration) in the defaults, in v0.1.0; no `verify:` key on requirements for now; the check for unverified requirements (B10) in the next release | `docs/feature-report.md` F2 |
+| 2026-10-16 | F3: v0.1.0 covers requirements only; the long-term goal is a model with requirement and design level, recorded in the vision. After v0.1.0 decide whether decisions as items come first or the design layer directly; status values per type are decided in that ADR | `docs/feature-report.md` F3 |
+| 2026-10-16 | F4: the spec records the fixed type and key names as current behaviour, not as a lasting promise; with F1 the type scope of the language checks and the name of the `ac` field become configurable; the structural names follow with the traceability model | `docs/feature-report.md` F4 |
+| 2026-10-16 | F5: offline by default. NFR-006 covers all commands in v0.1.0; a future command may use the network only when invoked explicitly and configured, with its own ADR; `check`, `fmt` and `lsp` stay offline | `docs/feature-report.md` F5 |
 | 2026-10-16 | Decisions found only in the code are recorded at their requirements and tests (tag Code), not yet in the spec; the owner decides per point | `docs/testing-guide.md` section 7 |
 | 2026-10-16 | Manual acceptance tests as `TC` items with `ver` links in `acceptance/`, one file and ID range per area; scenarios along the use cases as text in the guide | `acceptance/README.md` |
 | 2026-10-16 | Base project for the acceptance tests in `examples/acceptance/`, IDs from 901, so a stray mention in `acceptance/` is reported as dangling | `acceptance/README.md` |
@@ -236,33 +241,31 @@ As of 2026-10-16. Update this file at the end of every working session.
     - Status colours: draft dashed border, review yellow, approved green,
       deprecated grey; other configured values are not styled.
     - Step text is cut at 50 characters.
-11. **Verification methods (idea "unverified requirements",
-    `docs/roadmap.md`):** besides tests, which kinds of verification
-    record should count (review, demonstration, analysis), and should a
-    requirement state its expected method (e.g. `verify: test`)?
-12. **Scope: design between requirements and tests?** Decides the test
-    lifecycle and test suite integration (`docs/roadmap.md`). Options:
-    (1) requirements only, tests verify requirements; (2) plus decisions
-    (ADRs) as items linked to requirements, tests still verify
-    requirements; (3) full V-model with design items and tests per level.
-    Proposal: option 2. Once decided: a new ADR and an update of the scope
-    in `requirements/vision.md`.
+11. **Verification methods:** decided on 2026-10-16 (F2 in
+    `docs/feature-report.md`): every item with a `ver` link counts, with a
+    `method` key; no `verify:` on requirements for now.
+12. **Scope: design between requirements and tests?** Decided on
+    2026-10-16 (F3): v0.1.0 covers requirements only; the long-term goal is
+    a full model with design level. Open: whether decisions as items come
+    first; an ADR on the traceability model before building it.
 13. **ADR-0008 Editor integrations:** proposed; accept it in the review of
     the spec PR.
 
 ### Technical
 
-1. Fixed meanings in code: item type `usecase` has steps, link key `impl`
-   covers steps, `ref` is checked for cycles. Fine for now; configurable
-   later if needed.
+1. Fixed meanings in code: decided on 2026-10-16 (F4). The spec records
+   them as current behaviour; the type scope of the language checks and
+   the `ac` field become configurable in v0.1.0, the structural names with
+   the traceability model.
 
 ## Next steps
 
 1. Owner: verify the specification with `docs/testing-guide.md` and record
    the verdicts in `docs/verification-v0.1.0.md`; this includes the open
    interpretations above (business questions 5 to 12) and the code
-   findings in section 7 of the guide. Decide the scope of v0.1.0 with
-   `docs/feature-report.md` (section G, and the questions in section F).
+   findings in section 7 of the guide. F1 to F5 of
+   `docs/feature-report.md` are decided; still open for v0.1.0: D2, D7
+   and C2 (section G).
 2. Alpha release `v0.1.0-alpha.2` (FR-216, FR-403, FR-404 since
    alpha.1): check the release job and the four archives, then review and
    test the tool on a real project. Further rounds: bump to `-alpha.3`
