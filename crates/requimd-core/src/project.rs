@@ -340,7 +340,11 @@ mod tests {
         let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
         let config = Config::load(&root).unwrap();
         let p = Project::load(&root, config).unwrap();
-        assert!(p.files.iter().all(|f| f.rel.starts_with("requirements/")));
+        assert!(
+            p.files
+                .iter()
+                .all(|f| f.rel.starts_with("requirements/") || f.rel.starts_with("acceptance/"))
+        );
         assert!(
             p.files
                 .iter()
