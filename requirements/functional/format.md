@@ -160,13 +160,15 @@ the item types, link types, fields, value sets and defaults of the reference
 | quality | NFR | `scale`, `meter`, `must`, `plan` | | `scale`, `meter`, `must\|plan` |
 | rule | BR | `src` | | |
 | story | US | | `ac` | |
-| test | TC | | | |
+| test | TC | `method` | | |
 
 Every type also allows `status` (`draft`, `review`, `approved`,
 `deprecated`, default `draft`) and `prio` (`must`, `should`, `could`,
-`wont`). Link types: `impl` to use cases and steps, `ref` to any item or
-step, `ver` to functional and quality requirements and stories. IDs have at
-least 3 digits.
+`wont`). The key `method` of tests has the values `test`, `inspection`,
+`analysis` and `demonstration`: how a verification record verifies. Link
+types: `impl` to use cases and steps, `ref` to any item or step, `ver` to
+functional and quality requirements and stories. IDs have at least 3
+digits.
 
 Project configuration is merged with the defaults per entry: an entry such
 as `[types.quality]`, `[links.impl]` or a key in `[values]` replaces the
