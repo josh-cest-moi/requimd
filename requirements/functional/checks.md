@@ -197,3 +197,26 @@ found.
 ```markdown
 The Fast Track page shall load the order form. <!-- requimd: allow fast -->
 ```
+
+## FR-120 Formatting slips
+impl: UC-001.s3, UC-003.s3  prio: must  check: format-slip  sev: warning
+
+The system shall report a diagnostic for each of these formatting slips,
+which otherwise turn an item, a metadata line or the rest of a file into
+body text without a finding:
+
+- a heading whose first token is an item ID directly followed by
+  punctuation, such as `## FR-001: Title`, at the ID;
+- a heading whose first token is a configured prefix, a hyphen and fewer
+  digits than configured (BR-001), such as `## FR-12 Title`, at that
+  token;
+- the first line after an item heading, or a line of a metadata block,
+  that starts with a configured key and a colon without a space after it,
+  such as `prio:must`, at the key;
+- a blank line between an item heading and a line of `key: value` pairs
+  with configured keys, at that line;
+- a fenced code block that is not closed before the end of the file, at
+  its opening fence.
+
+Apart from the unclosed fence, slips inside code are examples and not
+reported (FR-009).
