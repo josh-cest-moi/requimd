@@ -233,5 +233,6 @@ For the consolidation (E3), each in a `spec/` pull request:
 The new code for v0.1.0 is mostly small (S); D1, D10 and E3 take a few
 days each. Every entry would become its own pull request, with a `spec/`
 part first where requirements change. The decisions on F1 to F5, D2, D7
-and C2 are in the decision log of `docs/status.md`. The result goes into
-`docs/roadmap.md`, step 4 of section 1 of the testing guide.
+and C2 are in the decision log of `docs/status.md`. The result is
+milestone M7 and the list after it in `docs/roadmap.md` (step 4 of
+section 1 of the testing guide).

@@ -85,16 +85,18 @@ As of 2026-10-16. Update this file at the end of every working session.
   FR-405; each requirement section names its automated tests and the
   decisions found only in the code (tag Code); base project
   `examples/acceptance/`; verdicts go into `docs/verification-v0.1.0.md`.
-  `docs/feature-report.md` lists the open, planned and possible features
-  with a proposal for v0.1.0. Next: the owner's verdicts and decisions,
-  then consolidating the spec, vision and scope, and the roadmap of
-  v0.1.0.
+  `docs/feature-report.md` lists the open, planned and possible features;
+  its questions are decided (decision log). The plan for v0.1.0 is
+  milestone M7 in `docs/roadmap.md` (draft): verdicts and decisions,
+  specification, implementation, release readiness, acceptance and
+  release.
 
 ## Decision log
 
 | Date | Decision | Where recorded |
 |------|----------|----------------|
 | 2026-10-16 | Before v0.1.0, the owner verifies the spec: testing guide in two phases (spec, then code), report on open features, then spec consolidation, vision and scope, roadmap | `docs/testing-guide.md` |
+| 2026-10-17 | v0.1.0 is milestone M7, in five steps: verdicts and decisions, specification, implementation (hash and lock file first), release readiness, acceptance on a release candidate; FR-504 moves to the first release after v0.1.0; the "Later / ideas" list is split into next release, later and on demand | `docs/roadmap.md` |
 | 2026-10-17 | D2: FR-012 keeps only robustness (parsing never stops, unrecognised content stays text); the diagnostics move to a new FR-120 that lists the cases of D1 (colon after the ID, `key:value` without space, blank line before metadata, unclosed code fence, near-miss IDs) with its own check ID | `docs/feature-report.md` D2 |
 | 2026-10-17 | D7: the hash for suspect links leaves out all HTML comments, so it covers what readers see, like the site, the language checks and GitHub; before v0.1.0, with one `requimd review --all` for alpha users | `docs/feature-report.md` D7 |
 | 2026-10-17 | C2: this repository's site is published on GitHub Pages on full releases only, from v0.1.0; every release, pre-releases included, gets the site as ZIP attachment; the site footer shows the version. A new FR-406, a publishing guide for GitHub Pages and GitLab Pages, covers UC-006.s3. Built in v0.1.0 | `docs/feature-report.md` C2 |
@@ -267,8 +269,9 @@ As of 2026-10-16. Update this file at the end of every working session.
    the verdicts in `docs/verification-v0.1.0.md`; this includes the open
    interpretations above (business questions 5 to 12) and the code
    findings in section 7 of the guide. The questions of
-   `docs/feature-report.md` (F1 to F5, D2, D7, C2) are decided; next:
-   the roadmap of v0.1.0 from section G and the spec consolidation.
+   `docs/feature-report.md` (F1 to F5, D2, D7, C2) are decided. The plan
+   for v0.1.0 is M7 in `docs/roadmap.md`: after the verdicts (step 1)
+   comes the spec consolidation (step 2).
 2. Alpha release `v0.1.0-alpha.2` (FR-216, FR-403, FR-404 since
    alpha.1): check the release job and the four archives, then review and
    test the tool on a real project. Further rounds: bump to `-alpha.3`
