@@ -7,8 +7,10 @@ The system shall provide `requimd export site <dir>`, which generates a static
 website with one page per source file, anchors per item and step, clickable
 references, a backlinks section per item, and an index of all items. The
 site shall work without a web server and without JavaScript. Every item
-shows its status; with `--status <list>`, for example `--status
-review,approved`, the site contains only items with these statuses.
+shows its status; with `--status <list>`, for example
+`--status review,approved`, the site contains only items with these
+statuses. Every page shall name the version of requimd that generated
+it.
 
 ## FR-401 Traceability matrix
 impl: UC-006.s2  prio: should
@@ -79,3 +81,17 @@ read-only pages.
 Deprecated on 2026-10-12 by the product owner: not needed. Stakeholders
 receive PDFs made by a separate Markdown-to-PDF converter, which is not part
 of requimd.
+
+## FR-406 Publishing guide
+impl: UC-006.s3  prio: must
+
+The system shall provide a guide that shows how a project publishes its
+site (FR-400) from a CI pipeline on GitHub Pages and on GitLab Pages, with
+the release workflow of this repository as the example for GitHub.
+
+## FR-407 Specification site in the release
+ref: FR-400  prio: must
+
+The release of requimd shall attach the site of its own specification as
+a ZIP file to every GitHub release, pre-releases included, and shall
+publish it on GitHub Pages for every release without a version suffix.
