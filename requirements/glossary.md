@@ -65,6 +65,12 @@ or `s2a`. Independent of the position in the list (BR-003).
 An item ID without a number, such as `FR-?`, used while writing. Replaced
 by a real ID on request.
 
+## Verification record
+
+An item that verifies another item with a `ver` link, for example a test
+case. Its key `method` says how: by test, inspection, analysis or
+demonstration.
+
 ## Suspect link
 
 A link whose target has changed since the link was last reviewed.
