@@ -77,44 +77,56 @@ read the site and the matrix. Scope from `docs/feature-report.md`
 (section G, IDs such as D1 refer to it) and the decision log of
 `docs/status.md`.
 
-The work runs in five steps. Within a step, pull requests can run side by
-side; a `spec/` or `decision/` pull request comes before the code that
-implements it.
+The work runs in five steps. Steps 1 and 2 happen on the branch
+`spec/requirements-validation`: nothing is merged before the product
+owner has reviewed and tested the whole specification, and the merge of
+that branch brings the validated specification to `main`. Steps 3 to 5
+then run as pull requests; a change of requirements comes before the code
+that implements it.
 
 ### 1. Verdicts and decisions (product owner)
 
 - Verdicts per item in `docs/verification-v0.1.0.md`, with the scenarios
   and acceptance tests of `docs/testing-guide.md` (E1)
-- Accept or change ADR-0008 (E9)
+- Accept or change ADR-0008 to ADR-0011 (E9; ADR-0009 to ADR-0011 come
+  from the decisions F1, D7 and F5)
 - Finish or drop the prepared `release/v0.1.0-alpha.3` (E9)
 
-### 2. Specification (`spec/` and `decision/` pull requests)
+### 2. Specification (on the branch `spec/requirements-validation`)
+
+The changes that the decisions of the feature report ask for are done on
+the branch ("done" below); the consolidation from the verdicts follows
+there.
 
 - Consolidate the spec from the verdicts and from sections 6 and 7 of the
   testing guide: contradictions, gaps, the code's answers, the open
   interpretations Q5 to Q10 (E3)
 - Vision and scope: analysts write in German and English; the design
-  level as long-term goal (E2, F1, F3)
+  level as long-term goal (E2, F1, F3) — done; the rest of E2 follows the
+  verdicts
 - Configurable language checks: required verb, story pattern, built-in
   lists that can be switched off, the item types each check applies to,
   the name of the `ac` field and an own check ID for a missing one
-  (FR-110, FR-111, FR-113, FR-118; F1, F4)
-- The names with a fixed meaning, in FR-014 or a new requirement (F4)
-- The key `method` with its value set for the type `test` (FR-014, F2)
+  (FR-110, FR-111, FR-113, FR-118, new FR-121; ADR-0009; F1, F4) — done
+- The names with a fixed meaning (new FR-015; F4) — done
+- The key `method` with its value set for the type `test` (FR-014, F2) —
+  done
 - FR-012 keeps robustness only; a new FR-120 for formatting slips: a
   colon after the ID, `key:value` without space, a blank line before the
-  metadata, an unclosed code fence, near-miss IDs (D1, D2)
-- HTML comments leave the hash of suspect links (FR-116; a decision that
-  amends ADR-0007; D7)
+  metadata, an unclosed code fence, near-miss IDs (D1, D2) — done
+- HTML comments leave the hash of suspect links (FR-116; ADR-0010 amends
+  ADR-0007; D7) — done
 - Stability promises for the format, `requimd.toml`, `requimd.lock` with
   a version field, and the JSON export: a new ADR (E4)
 - The version in the site footer (FR-400); a new FR-406, a guide to
-  publishing the site from CI, covers UC-006.s3 (C2)
+  publishing the site from CI, covers UC-006.s3; a new FR-407 for the site
+  in the release (C2) — done
 - NFR-006 covers all commands; network only for explicit opt-in commands
-  with their own ADR (F5)
+  with their own ADR (ADR-0011; F5) — done
 - `--version` and `--help` as requirements (E5)
 - The acceptance tests in `acceptance/` follow each change; their `ver`
-  links become suspect when a requirement changes
+  links become suspect when a requirement changes — done for the changes
+  above
 - Then the product owner sets `status: approved` (BR-004), in the order of
   section 1 of the testing guide
 
@@ -139,7 +151,7 @@ lock files mean.
 
 | Work | Kind | Effort |
 |------|------|--------|
-| Release workflow: site on GitHub Pages on full releases, site ZIP on every release; publishing guide | CI, new FR-406 | S |
+| Release workflow: site on GitHub Pages on full releases, site ZIP on every release; publishing guide | CI, FR-406, FR-407 | S |
 | Checksums for the release files; smoke test of the macOS x86_64 build | CI | S |
 | Licence notices of the bundled libraries in the archives and `.vsix` packages | CI | S to M |
 | A guide for analysts: getting started and the format by example | docs | M |

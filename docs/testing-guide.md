@@ -14,6 +14,15 @@ added, at each requirement, the decisions that exist only in the code
 code does where the spec is silent, and the commands for the benchmarks.
 Section 7 summarises what phase 2 found.
 
+After both phases, the decisions of `docs/feature-report.md` changed the
+specification on this branch: new FR-015, FR-120, FR-121, FR-406 and
+FR-407; changed FR-012, FR-014, FR-110, FR-111, FR-113, FR-116, FR-118,
+FR-400, NFR-006 and the vision; ADR-0009 to ADR-0011 are proposed. Their
+acceptance tests follow the new text and say what the code does until the
+change is built ("Code (before … is built)"). Sections 6 and 7 describe
+the specification before these changes; sections D and F of the feature
+report say which findings the decisions settle.
+
 ## 1. Approach
 
 Every requirement raises two questions:
@@ -42,9 +51,14 @@ The steps after this guide, as agreed:
 1. Phase 1: this guide and the acceptance tests (done).
 2. Phase 2: undocumented decisions from the code, added at the
    requirements and tests they concern (done).
-3. A report on the open, planned and possible features.
-4. Consolidating the requirements from the verdicts (`spec/` pull
-   requests), then vision and scope of v0.1.0, then the roadmap.
+3. A report on the open, planned and possible features, and the decisions
+   on it (done: `docs/feature-report.md`).
+4. The roadmap of v0.1.0 (done: M7 in `docs/roadmap.md`) and the spec
+   changes that the decisions ask for (done on this branch).
+5. Your verdicts, the consolidation of the specification from them, and
+   the approvals, all on the branch `spec/requirements-validation`.
+   Nothing is merged before; its merge brings the validated
+   specification to `main`.
 
 ### Recording the verified state with requimd itself
 
@@ -63,7 +77,7 @@ run again.
 | Path | Content |
 |------|---------|
 | `docs/testing-guide.md` | This guide: approach, preparation, scenarios, decisions, findings |
-| `acceptance/` | 185 acceptance tests as `TC` items, one file per area; conventions and tags in `acceptance/README.md` |
+| `acceptance/` | 197 acceptance tests as `TC` items, one file per area; conventions and tags in `acceptance/README.md` |
 | `examples/acceptance/` | The base project the tests start from |
 | `docs/verification-v0.1.0.md` | The record of verdicts, one row per item |
 | `docs/neovim.md`, `docs/vscode.md` | Editor setup and the feature tables the tests refer to |
@@ -167,7 +181,11 @@ filter runs the tests of one requirement. From the repository root:
 On Windows the executable for the Neovim check is
 `target/release/requimd.exe`. Every requirement has automated tests except
 BR-002 (covered by the tests of FR-212), BR-004 (a rule for people),
-FR-112 (not built), FR-405 (deprecated) and FR-504 (not written yet).
+FR-112 (not built), FR-405 (deprecated), FR-504 (not written yet) and the
+requirements that the decisions added (FR-015, FR-120, FR-121, FR-406,
+FR-407), which are not built yet. For the requirements that the decisions
+changed, the automated tests still check the behaviour before the
+change.
 
 A passing automated test shows that the code does what its author
 understood. The acceptance tests are there to check that this is what the

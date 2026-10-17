@@ -1,6 +1,6 @@
 # Project status
 
-As of 2026-10-16. Update this file at the end of every working session.
+As of 2026-10-17. Update this file at the end of every working session.
 
 ## State
 
@@ -74,22 +74,27 @@ As of 2026-10-16. Update this file at the end of every working session.
   twice: against the source and against a packaged `.vsix` with its
   bundled executable. The release attaches one `.vsix` per platform with
   the release binary (FR-502). Guide `docs/vscode.md`. All `must` items of
-  M6 are done; open: IntelliJ guide (FR-504).
-- **Verification for v0.1.0: testing guide done (phases 1 and 2).** The
-  owner verifies the specification before the first release.
+  M6 are done; the IntelliJ guide (FR-504) moves to the first release
+  after v0.1.0.
+- **Verification for v0.1.0: on the branch `spec/requirements-validation`.**
+  The owner validates the whole specification before the first release;
+  nothing is merged before, and the merge of this branch brings the
+  validated specification to `main`.
   `docs/testing-guide.md` walks through it: scenarios along the use cases,
   design decisions, the findings of phase 1 (from spec, ADRs and this file
   only) and of phase 2 (from the code: deviations, gaps the code answers,
-  decisions to validate, fixed names). 185 manual acceptance tests as `TC`
+  decisions to validate, fixed names). 197 manual acceptance tests as `TC`
   items in `acceptance/` verify every requirement except FR-112 and
   FR-405; each requirement section names its automated tests and the
   decisions found only in the code (tag Code); base project
-  `examples/acceptance/`; verdicts go into `docs/verification-v0.1.0.md`.
-  `docs/feature-report.md` lists the open, planned and possible features;
-  its questions are decided (decision log). The plan for v0.1.0 is
-  milestone M7 in `docs/roadmap.md` (draft): verdicts and decisions,
-  specification, implementation, release readiness, acceptance and
-  release.
+  `examples/acceptance/`; verdicts go into `docs/verification-v0.1.0.md`
+  (102 items). `docs/feature-report.md` lists the open, planned and
+  possible features; its questions are decided (decision log). The
+  spec changes that the decisions ask for are on the branch: ADR-0009 to
+  ADR-0011 (proposed); new FR-015, FR-120, FR-121, FR-406, FR-407;
+  changed FR-012, FR-014, FR-110, FR-111, FR-113, FR-116, FR-118, FR-400,
+  NFR-006 and the vision; not built yet. The plan for v0.1.0 is milestone
+  M7 in `docs/roadmap.md` (draft).
 
 ## Decision log
 
@@ -97,6 +102,7 @@ As of 2026-10-16. Update this file at the end of every working session.
 |------|----------|----------------|
 | 2026-10-16 | Before v0.1.0, the owner verifies the spec: testing guide in two phases (spec, then code), report on open features, then spec consolidation, vision and scope, roadmap | `docs/testing-guide.md` |
 | 2026-10-17 | v0.1.0 is milestone M7, in five steps: verdicts and decisions, specification, implementation (hash and lock file first), release readiness, acceptance on a release candidate; FR-504 moves to the first release after v0.1.0; the "Later / ideas" list is split into next release, later and on demand | `docs/roadmap.md` |
+| 2026-10-17 | All verification work stays on one branch, `spec/requirements-validation`, built on `main`; nothing is merged until the owner has reviewed and tested the whole specification; the next commit to `main` is the validated specification. The single branches of the session are folded into it and deleted | `docs/status.md`, `docs/roadmap.md` M7 |
 | 2026-10-17 | D2: FR-012 keeps only robustness (parsing never stops, unrecognised content stays text); the diagnostics move to a new FR-120 that lists the cases of D1 (colon after the ID, `key:value` without space, blank line before metadata, unclosed code fence, near-miss IDs) with its own check ID | `docs/feature-report.md` D2 |
 | 2026-10-17 | D7: the hash for suspect links leaves out all HTML comments, so it covers what readers see, like the site, the language checks and GitHub; before v0.1.0, with one `requimd review --all` for alpha users | `docs/feature-report.md` D7 |
 | 2026-10-17 | C2: this repository's site is published on GitHub Pages on full releases only, from v0.1.0; every release, pre-releases included, gets the site as ZIP attachment; the site footer shows the version. A new FR-406, a publishing guide for GitHub Pages and GitLab Pages, covers UC-006.s3. Built in v0.1.0 | `docs/feature-report.md` C2 |
@@ -253,8 +259,10 @@ As of 2026-10-16. Update this file at the end of every working session.
     2026-10-16 (F3): v0.1.0 covers requirements only; the long-term goal is
     a full model with design level. Open: whether decisions as items come
     first; an ADR on the traceability model before building it.
-13. **ADR-0008 Editor integrations:** proposed; accept it in the review of
-    the spec PR.
+13. **ADR-0008 to ADR-0011:** proposed (editor integrations, languages of
+    requirement texts, HTML comments outside the hash, offline by
+    default); accept or change them in the review of
+    `spec/requirements-validation`.
 
 ### Technical
 
@@ -265,13 +273,13 @@ As of 2026-10-16. Update this file at the end of every working session.
 
 ## Next steps
 
-1. Owner: verify the specification with `docs/testing-guide.md` and record
+1. Owner: review and test the specification on the branch
+   `spec/requirements-validation` with `docs/testing-guide.md`, and record
    the verdicts in `docs/verification-v0.1.0.md`; this includes the open
-   interpretations above (business questions 5 to 12) and the code
-   findings in section 7 of the guide. The questions of
-   `docs/feature-report.md` (F1 to F5, D2, D7, C2) are decided. The plan
-   for v0.1.0 is M7 in `docs/roadmap.md`: after the verdicts (step 1)
-   comes the spec consolidation (step 2).
+   interpretations above (business questions 5 to 12), the code findings
+   in section 7 of the guide and ADR-0008 to ADR-0011. Then, on the same
+   branch: consolidate the specification from the verdicts and approve the
+   items (step 2 of M7). Its merge is the next commit to `main`.
 2. Alpha release `v0.1.0-alpha.2` (FR-216, FR-403, FR-404 since
    alpha.1): check the release job and the four archives, then review and
    test the tool on a real project. Further rounds: bump to `-alpha.3`

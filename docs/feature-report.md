@@ -198,7 +198,8 @@ log of `docs/status.md`.
 
 ### Spec changes that follow
 
-For the consolidation (E3), each in a `spec/` pull request:
+Done on the branch `spec/requirements-validation`, except the open
+parts of E2:
 
 - `requirements/vision.md`: users write in German and English; the design
   level as long-term goal (E2).
