@@ -33,7 +33,7 @@ comfortable as writing code in a good editor, without extra typing.
 
 | Who | Interest |
 |-----|----------|
-| Analyst (primary user) | Writes and maintains requirements in the editor |
+| Analyst (primary user) | Writes and maintains requirements in the editor, in German or English |
 | Developer | Reads requirements, links tests and code to them |
 | Tester | Links test cases, checks coverage |
 | Stakeholder / reviewer | Reads published requirements, reviews changes |
@@ -41,13 +41,16 @@ comfortable as writing code in a good editor, without extra typing.
 
 ## Scope
 
-In scope for the first release: the file format, a CLI that checks a
-repository, and a language server with core authoring features (completion,
-hover, navigation, diagnostics). Details per milestone are in
-`docs/roadmap.md`.
+In scope for the first release, v0.1.0: the file format; a CLI that
+checks, formats and exports a repository (static site, traceability
+matrix, JSON, requirement changelog, diagrams); a language server with
+authoring, navigation and impact analysis features; and an extension for
+VS Code. Details per milestone are in `docs/roadmap.md`.
 
-Planned later: suspect links and impact analysis, static site export,
-traceability matrix, requirement-level changelog.
+Long-term goal: a model that covers requirements and design. Design
+decisions and design items link to the requirements they answer or
+satisfy, take part in tracing and impact analysis, and are verified on
+their own level. The first release covers requirements only.
 
 Out of scope: a graphical editor, a web application with user management,
 storing requirements in a database, real-time collaborative editing.
@@ -58,5 +61,9 @@ storing requirements in a database, real-time collaborative editing.
   someone in the team who is.
 - The format must stay plain CommonMark with conventions; no custom markup
   that breaks rendering on GitHub or GitLab (NFR-008).
-- The primary editor is Neovim 0.12 with its built-in LSP client; any editor
-  speaking LSP should work (NFR-007).
+- Analysts work in VS Code with the requimd extension or in Neovim 0.12
+  with its built-in LSP client; any editor with an LSP client works
+  (NFR-007).
+- Requirement texts are in German or English. The language checks are
+  configured per project; messages, hover texts and the site are in
+  English (ADR-0009).
