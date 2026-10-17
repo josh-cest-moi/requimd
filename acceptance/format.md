@@ -348,16 +348,18 @@ Then `FR-901` has three `impl` links; nothing is reported.
   `fr_005_body_fields_only_for_their_type` (core parse.rs).
 
 ### TC-013 Body fields of the item type are recognised
-ver: FR-005, FR-113
+ver: FR-005, FR-121
 
 Given `US-901` in `other.md` as it is, then with `ac:` renamed to
 `criteria:`.
 
 When `requimd check` runs each time.
 
-Then the first run reports nothing; the second reports a `story-pattern`
-diagnostic for the missing `ac` field. The list below `ac:` belongs to its
-value.
+Then the first run reports nothing; the second reports an
+`acceptance-criteria` diagnostic for the missing `ac` field (FR-121). The
+list below `ac:` belongs to its value.
+
+Code (before FR-121 is built): the check ID is `story-pattern`.
 
 ### TC-014 A body field key of another type is plain text
 ver: FR-005
@@ -835,3 +837,41 @@ Then `NFR-901` reports `meter` and `must` as `unknown-key` and no
 `missing-key` (the replaced entry has no required keys); `prio: must` on
 the functional requirements is an `invalid-value`; `status` values are
 unchanged; all other types still exist.
+
+## Names with a fixed meaning (FR-015)
+
+- Decision F4 (2026-10-16): the spec records the fixed meanings as current
+  behaviour; ADR-0009 (proposed) makes the item types of the language
+  checks configurable.
+- Code: the names are constants in `crates/requimd-core/src/config.rs`
+  (`USECASE`, `IMPL`, `REF`, `FUNCTIONAL` and others).
+- Automated: none named after FR-015 yet.
+
+### TC-037 Fixed meanings stay with their names
+ver: FR-015
+
+Given in `requimd.toml`:
+
+```toml
+[types.usecase]
+prefix = "AF"
+meta = ["actor"]
+body = ["pre", "post", "trigger"]
+
+[types.process]
+prefix = "PR"
+```
+
+with `UC-901` renamed to `AF-901` in all files, and a new file `a.md`:
+
+```markdown
+## PR-901 Returns
+- s1: Customer sends the goods back.
+```
+
+When `requimd check` and `requimd show AF-901.s2` run.
+
+Then `AF-901` keeps its steps, their coverage and implementations: no new
+finding. `PR-901` has no steps, so nothing is uncovered there.
+
+Code: confirmed; the meaning hangs on the type name `usecase`.
