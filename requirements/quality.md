@@ -47,9 +47,13 @@ Code, the extension package is this one file; it contains the executable
 
 ## NFR-006 Offline operation
 prio: must
-scale: network connections opened by check, fmt and lsp
+scale: network connections opened by requimd, except by commands that a user invokes and configures for network access (ADR-0011)
 meter: run the test suite with network access blocked
 must: 0
+
+requimd works without network access, in CI and behind corporate
+firewalls. `check`, `fmt` and the language server never open a connection;
+a command that uses the network needs an ADR of its own (ADR-0011).
 
 ## NFR-007 Editor neutrality
 impl: UC-007.s2  prio: must
