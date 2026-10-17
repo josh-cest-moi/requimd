@@ -728,9 +728,12 @@ Then first a `placeholder` warning at the heading; after `fmt` the item has
   (the link still exists, now dangling).
 - Validate: a link changed by hand (source ID edited without rename) loses
   its review state silently; the new link is recorded as reviewed.
-- Code: the hash of an item covers everything after the metadata block up to
-  the end of the item: text, steps, lower-level headings, code blocks and
-  HTML comments. So adding an inline allow marker to a target ("allow here",
+- Decision D7 (2026-10-17), ADR-0010 (proposed): HTML comments leave the
+  hash (TC-161).
+- Code (before ADR-0010 is built): the hash of an item covers everything
+  after the metadata block up to the end of the item: text, steps,
+  lower-level headings, code blocks and HTML comments. So adding an inline
+  allow marker to a target ("allow here",
   FR-219) makes its incoming links suspect.
 - Code: the lock entry of a link whose target was deleted is kept while the
   link exists (gap above); if the target comes back with other content, the
@@ -821,6 +824,22 @@ Then the lock no longer has the entry of `TC-901`; no `suspect-link` for
 the mention; no entries for the links of the placeholder and of the
 duplicate. After `requimd fmt` (ID for the placeholder) and the next
 `requimd check`, the link of the new item is recorded.
+
+### TC-161 HTML comments do not make links suspect
+ver: FR-116, FR-119
+
+Given the base project checked once; `FR-902` gets a new last line
+`<!-- Author note: check the rounding with finance. -->`, and the text of
+step `s2` of `UC-901` gets ` <!-- todo -->` at its end; then `FR-902` gets
+the word "fast" with "allow here" (FR-219) on that line.
+
+When `requimd check` runs after each change.
+
+Then no `suspect-link` is reported: neither at `ref: FR-902` and
+`ver: FR-902`, nor at `impl: UC-901.s2`.
+
+Code (before ADR-0010 is built): the links to `FR-902` and to `UC-901.s2`
+become suspect.
 
 ## Check configuration (FR-117)
 
