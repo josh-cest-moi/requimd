@@ -1,6 +1,7 @@
 # ADR-0007 Lock file
 
-Status: **accepted** on 2026-10-12 by the product owner.
+Status: **accepted** on 2026-10-12 by the product owner. Amended by
+ADR-0010 (proposed): HTML comments are not part of the content hash.
 
 ## Context
 
