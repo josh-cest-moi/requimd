@@ -171,3 +171,24 @@ least 3 digits.
 Project configuration is merged with the defaults per entry: an entry such
 as `[types.quality]`, `[links.impl]` or a key in `[values]` replaces the
 default entry of the same name completely; all other default entries stay.
+
+## FR-015 Names with a fixed meaning
+impl: UC-003.s2  prio: must
+
+The system shall give these names of the default configuration (FR-014) a
+fixed meaning that does not depend on the project configuration:
+
+- the item type `usecase` has steps (FR-006); the type `functional` is the
+  type of the requirement stub for an uncovered step (FR-213);
+- the link key `impl` covers steps (FR-106) and defines implementations
+  (FR-208) and the implementing items of the matrix (FR-401); `ref` links
+  are checked for cycles (FR-108); `ver` links define the verifying items
+  of the matrix (FR-401);
+- the key `status` with the values `draft`, `review`, `approved` and
+  `deprecated` is read by FR-109, FR-116, FR-400, FR-403 and FR-404.
+
+The prefixes, keys and fields of these entries stay configurable. The item
+types that the language checks read are set per check (FR-110, FR-111,
+FR-113, FR-118, FR-121). FR-015 records the current behaviour; the
+traceability model of a later design level replaces it (decision F4 in
+`docs/status.md`).
