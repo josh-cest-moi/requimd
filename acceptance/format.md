@@ -797,6 +797,9 @@ declarations of `FR-901` get `duplicate-id`.
   keeps this repository's `requimd.toml` equal to them. So the reference in
   FR-014 holds, but the repository cannot change its own types without
   failing that test.
+- Decision F2 (2026-10-16): verification records get the key `method` in
+  the defaults (TC-038). This repository's `requimd.toml` follows with the
+  implementation, since a unit test keeps it equal to the defaults.
 - Automated: `fr_014_defaults_contain_types_links_and_values`,
   `fr_014_defaults_match_reference_config`,
   `fr_014_project_entry_replaces_default_entry` (core config.rs);
@@ -835,3 +838,16 @@ Then `NFR-901` reports `meter` and `must` as `unknown-key` and no
 `missing-key` (the replaced entry has no required keys); `prio: must` on
 the functional requirements is an `invalid-value`; `status` values are
 unchanged; all other types still exist.
+
+### TC-038 A verification record states its method
+ver: FR-014
+
+Given `TC-901` with the metadata line `ver: FR-902  method: inspection`;
+then with `method: review`.
+
+When `requimd check` runs each time.
+
+Then first nothing is reported; then `review` is an `invalid-value` error
+that lists `test`, `inspection`, `analysis` and `demonstration`.
+
+Code (before F2 is built): `method` is an `unknown-key` warning.
