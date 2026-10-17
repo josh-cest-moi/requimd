@@ -149,8 +149,10 @@ The system shall store, per link, a content hash of the target as of the
 last review in the lock file (ADR-0007). If the current hash of the target
 differs, the system shall report a diagnostic at the link. For a step
 target, the hash covers the step text; for an item, the title, the metadata
-except `status`, and the body. Runs of whitespace, including line breaks,
-count as one space, so re-wrapping text does not make a link suspect.
+except `status`, and the body. HTML comments, the inline markers of FR-119
+included, are not part of the hash, since readers do not see them
+(ADR-0010). Runs of whitespace, including line breaks, count as one space,
+so re-wrapping text does not make a link suspect.
 
 Links without an entry in the lock file are recorded silently with the
 current hash on their first check; entries of links that no longer exist
