@@ -130,9 +130,11 @@ Items a customer has selected but not yet ordered.
 ## FR-012 Tolerant parsing
 impl: UC-001.s3, UC-003.s2  prio: must
 
-If an item contains malformed content, the parser shall record a diagnostic
-for that item and continue with the remaining items and files. Incomplete
-input while typing shall never stop parsing of the whole project.
+The parser shall continue with the remaining items and files on any
+input; content that it does not recognise stays body text. Incomplete
+input while typing shall never stop parsing of the whole project. FR-120
+reports the formatting slips that otherwise turn content into body text
+without a finding.
 
 ## FR-013 Configuration discovery
 impl: UC-003.s2, UC-003.s2a  prio: must
