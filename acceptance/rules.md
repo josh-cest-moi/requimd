@@ -22,7 +22,7 @@ allowing `ver` to rules? Related to open business questions 11
 - Automated: `br_001_id_needs_configured_digits` (core parse.rs).
 
 ### TC-700 Valid and invalid ID forms
-ver: FR-001
+ver: FR-001, FR-120
 
 Given a new file `a.md`:
 
@@ -34,7 +34,8 @@ Given a new file `a.md`:
 
 When `requimd check`, `requimd show FR-9001`, `requimd show FR-91` run.
 
-Then `FR-9001` is an item; `FR-91` is none, without a diagnostic (Q5).
+Then `FR-9001` is an item; `FR-91` is none and gets a `format-slip`
+warning (FR-120; before FR-120 is built, no diagnostic, Q5).
 For `FR-0902` next to the existing `FR-902` the spec is silent (Gap):
 note whether it is a second item or a `duplicate-id`.
 

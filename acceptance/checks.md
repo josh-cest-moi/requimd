@@ -1014,3 +1014,37 @@ the example of FR-110). With the lower-case entry, the spec is silent
 (Gap): note what happens.
 
 Code: the lower-case entry works the same: allow entries ignore case.
+
+## Formatting slips (FR-120)
+
+- Decision D2 (2026-10-17): FR-012 keeps only robustness; this check
+  reports the slips. Each case has its test at the requirement it concerns:
+  TC-035 (punctuation after the ID), TC-700 (too few digits), TC-036 (key
+  without space), TC-010 (blank line before metadata), TC-028 (unclosed
+  fence).
+- Automated: none yet.
+
+### TC-160 Slips inside code, and the check switched off
+ver: FR-120, FR-009
+
+Given a new file `a.md`:
+
+````markdown
+## FR-930 Example
+The system shall show examples.
+
+```markdown
+## FR-931: Colon after the ID
+prio:must
+```
+````
+
+then the slips of TC-035 and TC-036 outside code, with
+`format-slip = "off"` under `[checks]`.
+
+When `requimd check` runs each time.
+
+Then the code block gives no `format-slip` finding; with the check off,
+there is no `format-slip` finding at all.
+
+Code (before FR-120 is built): no `format-slip` finding either way.

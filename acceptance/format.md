@@ -89,7 +89,7 @@ Code: `FR-916` is an item: the parser treats a heading in a block quote like
 any other heading.
 
 ### TC-035 Characters after the ID in a heading
-ver: FR-001
+ver: FR-001, FR-120
 
 Given a new file `a.md`:
 
@@ -102,13 +102,11 @@ Given a new file `a.md`:
 When `requimd check` and `requimd show` run for the three IDs.
 
 Then by FR-001 `FR-960` and `FR-961` are no items (the first token is no
-ID); `FR-962` is an item without title.
+ID); `FR-962` is an item without title. `FR-960` gets a `format-slip`
+warning at the ID (FR-120); `FR-961` none, since code is an example.
 
-Code: confirmed; none of the three headings gets a diagnostic.
-
-Validate: writing `FR-001: Title` is a common habit and silently turns the
-requirement into plain text. A warning may be worth adding (compare the
-near-miss IDs on the "Later" list).
+Code (before FR-120 is built): none of the three headings gets a
+diagnostic.
 
 ## Item extent (FR-002)
 
@@ -253,7 +251,7 @@ Then `prio: high` is body text: no `invalid-value` is reported, and the
 item has no priority.
 
 ### TC-010 A blank line between heading and metadata
-ver: FR-003
+ver: FR-003, FR-120
 
 Given a new file `a.md`:
 
@@ -265,10 +263,10 @@ prio: high
 
 When `requimd check` runs.
 
-Then the item has no metadata block and nothing is reported.
+Then the item has no metadata block, and the line `prio: high` gets a
+`format-slip` warning (FR-120).
 
-Validate: a common slip that silently turns metadata into text. A hint may
-be worth adding.
+Code (before FR-120 is built): nothing is reported.
 
 ### TC-011 The metadata block ends at the first blank line
 ver: FR-003
@@ -287,7 +285,7 @@ When `requimd check` and `requimd show FR-932` run.
 Then `status: wrong` is body text: no `invalid-value`, status `draft`.
 
 ### TC-036 A key needs a space after its colon
-ver: FR-003
+ver: FR-003, FR-120
 
 Given the metadata line of `FR-901` is:
 
@@ -297,14 +295,11 @@ impl:UC-901.s1  prio:must
 
 When `requimd check` runs.
 
-Then the spec does not say whether `key:value` without a space is a pair
-(Gap).
+Then the line is no metadata, so `s1` of `UC-901` becomes uncovered, and
+`impl` gets a `format-slip` warning at the key (FR-120).
 
-Code: the line is no metadata, since a key needs a space or a tab after
-the colon: it is body text, `s1` of `UC-901` becomes uncovered, and
-nothing points at the line.
-
-Validate: a typing slip that silently drops a link.
+Code: a key needs a space or a tab after the colon (TC-036 was a gap
+before FR-120). Before FR-120 is built, nothing points at the line.
 
 ## Multiple values (FR-004)
 
@@ -637,6 +632,9 @@ heading follows directly.
   parser never fails; whatever it does not recognise stays plain text, and
   only the regular checks report something (TC-027). Files that are not
   valid UTF-8 are read with replacement characters, without a message.
+- Decision D2 (2026-10-17): FR-012 keeps only robustness; the slips that
+  turn content into text silently get a diagnostic of FR-120 (TC-010,
+  TC-028, TC-035, TC-036, TC-700).
 - Automated: `fr_012_crlf_line_endings`, `fr_012_survives_arbitrary_input`
   (core parse.rs).
 
@@ -661,7 +659,7 @@ Code: expect only a `no-shall` info for `FR-950`, an item with an empty
 title. `## FR-` and the other lines are plain text and get no diagnostic.
 
 ### TC-028 An unclosed code fence
-ver: FR-012, FR-009
+ver: FR-012, FR-009, FR-120
 
 Given a new file `a.md`:
 
@@ -677,12 +675,9 @@ unclosed fence
 When `requimd show FR-952` runs.
 
 Then `FR-952` is no item: in CommonMark an unclosed fence runs to the end
-of the file. Nothing points at the cause.
+of the file. The opening fence gets a `format-slip` warning (FR-120).
 
-Validate: a missing closing fence silently removes all following items of
-the file. A diagnostic may be worth adding (Gap).
-
-Code: confirmed; no diagnostic.
+Code (before FR-120 is built): no diagnostic.
 
 ## Configuration discovery (FR-013)
 
