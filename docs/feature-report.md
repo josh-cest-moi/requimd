@@ -112,12 +112,15 @@ verification record. What counts as a record is F2.
 | # | Feature | Source | Value | Effort | Depends on | Proposal |
 |---|---------|--------|-------|--------|------------|----------|
 | C1 | VS Code Marketplace and Open VSX | ADR-0008, log 2026-10-14 | O1: installation and automatic updates | S | publisher accounts of the owner; the publisher name `josh-cest-moi` is a placeholder | next |
-| C2 | Site of the specification on GitHub Pages | `docs/roadmap.md` M5, `docs/status.md` | O5 | S | whether the specification may be public; a requirement for UC-006.s3 | decide for v0.1.0, build next |
+| C2 | Site of the specification on GitHub Pages | `docs/roadmap.md` M5, `docs/status.md` | O5 | S | your Pages setting (source: GitHub Actions); a requirement for UC-006.s3 | v0.1.0 (decided) |
 
 **C2:** step UC-006.s3, "Analyst publishes the website", is covered only
-by FR-405, which is deprecated. Either a new requirement covers it (CI
-publishes the site), or the step changes to "Analyst passes the site or
-PDFs to stakeholders".
+by FR-405, which is deprecated. Decided on 2026-10-17: the repository is
+public anyway; the release workflow publishes the site on GitHub Pages on
+full releases only, from v0.1.0, and attaches it as ZIP to every release,
+pre-releases included; the site footer shows the version. A new FR-406, a
+guide to publishing the site from CI on GitHub Pages and GitLab Pages,
+covers UC-006.s3, with this repository's workflow as example.
 
 ## D. Possible features from the verification
 
@@ -127,12 +130,12 @@ of silent behaviour rather than features.
 | # | Feature | Value | Effort | Depends on | Proposal |
 |---|---------|-------|--------|------------|----------|
 | D1 | Warnings for silent slips: a colon after the ID (TC-035), `key:value` without space (TC-036), a blank line between heading and metadata (TC-010), an unclosed code fence (TC-028), near-miss IDs (B12) | O2 | M | – | v0.1.0 |
-| D2 | FR-012 asks for a diagnostic on malformed content, and the code records none: either add one or adjust FR-012 | O2 | S (spec) to M (check) | D1 covers the common cases | decide for v0.1.0 |
+| D2 | FR-012 asks for a diagnostic on malformed content, and the code records none: either add one or adjust FR-012 | O2 | S (spec) | D1 | v0.1.0 (decided): FR-012 keeps robustness; a new FR-120 lists the cases of D1 |
 | D3 | The site renders tables, strikethrough and task lists as GitHub does (TC-412) | O5 | S | items stay plain CommonMark (ADR-0002); only the rendering changes | v0.1.0 |
 | D4 | A matrix CSV that Excel opens correctly: byte order mark, semicolon as an option (TC-403) | O5 | S | – | v0.1.0 |
 | D5 | Control over the files of a project: exclude patterns, nested projects left out, possibly `.gitignore` (TC-032) | O2: no findings from unrelated files | S, `.gitignore` M | `.gitignore` needs one more library | v0.1.0 for exclude and nested projects, `.gitignore` next |
 | D6 | `requimd fmt` records the IDs it assigns in the lock file (TC-310) | BR-002 | S | – | v0.1.0 |
-| D7 | Inline allow markers do not count in the hash of a suspect link (FR-116) | O3: no false suspect links | S | changes the hash of every item with a marker, so it must come before E4 | decide for v0.1.0 |
+| D7 | Inline allow markers do not count in the hash of a suspect link (FR-116) | O3: no false suspect links | S | changes the hash of every item with a comment, so it must come before E4 | v0.1.0 (decided): all HTML comments leave the hash |
 | D8 | Fixed type and key names (`usecase`, `functional`, `impl`, `ac` …): specify them as fixed, or make them configurable | robustness | S | F4 | v0.1.0: specify; type scope of the language checks and the `ac` field configurable with D10; structural names with the traceability model |
 | D9 | Site: labels in other languages; files of an earlier export removed | O5 | S | F1: output stays English | stale files next; labels dropped |
 | D10 | Requirement texts in another language than English: word lists, modal verbs, "shall", the story pattern | O1, O2 for non-English teams | M | F1 | v0.1.0: configurable, English shipped |
@@ -145,7 +148,10 @@ configuration simple.
 **D7:** today, "Allow here" (FR-219) on a word in a target item makes
 every link to that item suspect. Changing the hash later would make many
 links of all projects suspect at once; before v0.1.0 only alpha users are
-affected.
+affected. Decided on 2026-10-17: the hash leaves out all HTML comments,
+so it covers what readers see, as the site, the language checks and
+GitHub do. Alpha users run `requimd review --all` once after the
+update.
 
 **D10:** a German analyst writing "Das System muss …" gets a `no-shall`
 info on every requirement, and "soll", "kann" or "schnell" go unnoticed
@@ -205,6 +211,12 @@ For the consolidation (E3), each in a `spec/` pull request:
   new check IDs.
 - A requirement, or text in FR-014, on the names with a fixed meaning.
 - NFR-006: the scale covers all commands; the opt-in principle.
+- FR-012: robustness only; a new FR-120 with its own check ID for the
+  cases of D1 (D2).
+- FR-116 and ADR-0007: the hash leaves out HTML comments; ADR-0007 is
+  accepted, so a superseding or amending decision is needed (D7).
+- FR-400: the version in the site footer; a new FR-406, the publishing
+  guide, implements UC-006.s3 (C2).
 - ADR candidates: the language configuration (F1) and the network
   principle (F5).
 
@@ -212,14 +224,14 @@ For the consolidation (E3), each in a `spec/` pull request:
 
 | When | Entries |
 |------|---------|
-| v0.1.0 | E1 to E9; D1 (with B12), D3, D4, D5 (exclude, nested projects), D6, D8 (specified), D10 with the configurable scope of D8 (F1, F4); the `method` key (F2); NFR-006 for all commands (F5); still to decide: D2, D7, C2 (whether public) |
-| next | A1, B6, B7, B8, B10, B11, B13, B14, B15, C1, C2 (build), D5 (`.gitignore`), D9 (stale files); the ADR on the traceability model, with the choice between B9 and the design layer (F3) |
+| v0.1.0 | E1 to E9; D1 with B12 as FR-120 (D2), D3, D4, D5 (exclude, nested projects), D6, D7 (comments out of the hash), D8 (specified), D10 with the configurable scope of D8 (F1, F4); the `method` key (F2); NFR-006 for all commands (F5); C2 (Pages on full releases, site ZIP on every release, version in the footer, FR-406 guide) |
+| next | A1, B6, B7, B8, B10, B11, B13, B14, B15, C1, D5 (`.gitignore`), D9 (stale files); the ADR on the traceability model, with the choice between B9 and the design layer (F3) |
 | later | A2, B1, B2, B5, B9 or the design layer (F3) |
 | on demand | B3, B4 |
 | dropped | D9 (site labels in other languages, F1) |
 
 The new code for v0.1.0 is mostly small (S); D1, D10 and E3 take a few
 days each. Every entry would become its own pull request, with a `spec/`
-part first where requirements change. The decisions on F1 to F5 are in
-the decision log of `docs/status.md`; D2, D7 and C2 follow. The result
-goes into `docs/roadmap.md`, step 4 of section 1 of the testing guide.
+part first where requirements change. The decisions on F1 to F5, D2, D7
+and C2 are in the decision log of `docs/status.md`. The result goes into
+`docs/roadmap.md`, step 4 of section 1 of the testing guide.
