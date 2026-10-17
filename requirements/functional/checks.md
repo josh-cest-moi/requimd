@@ -73,9 +73,10 @@ If an item with status `approved` links to an item with status `draft` or
 ## FR-110 Weak words
 impl: UC-001.s3a  prio: should  check: weak-word  sev: warning
 
-If the title or text of a functional or quality requirement contains a
-configured weak word, the system shall report a diagnostic at the word that
-states the reason configured for that word.
+If the title or text of an item of a type that the check reads contains a
+weak word, the system shall report a diagnostic at the word that states
+the reason configured for that word. By default the check reads functional
+and quality requirements; the option `types` sets the item types.
 
 Matching rules:
 
@@ -91,11 +92,12 @@ Matching rules:
 
 The list is configured in `requimd.toml` under `[checks.weak-word]` as
 `words`, each entry with the word `w` and the reason `why`. Configured words
-extend the built-in list; a built-in word is switched off by the `allow`
-list (FR-119). The built-in list contains at least `fast`, `quick`,
-`quickly`, `easy`, `user-friendly`, `intuitive`, `flexible`, `robust`,
-`appropriate`, `adequate`, `several`, `etc.`, `and/or`, `as needed` and `if
-possible`, each with a reason.
+extend the built-in list; `builtin = false` switches the built-in list off,
+and the `allow` list switches single words off (FR-119). The built-in list
+is English (ADR-0009) and contains at least `fast`, `quick`, `quickly`,
+`easy`, `user-friendly`, `intuitive`, `flexible`, `robust`, `appropriate`,
+`adequate`, `several`, `etc.`, `and/or`, `as needed` and `if possible`,
+each with a reason.
 
 ```toml
 [checks.weak-word]
@@ -106,11 +108,30 @@ words = [
 allow = ["Fast Track"]
 ```
 
+A German project replaces the built-in list:
+
+```toml
+[checks.weak-word]
+builtin = false
+words = [
+  { w = "schnell", why = "nicht messbar; Zeitgrenze angeben" },
+  { w = "schnelle", why = "nicht messbar; Zeitgrenze angeben" },
+]
+```
+
 ## FR-111 Missing "shall"
 impl: UC-001.s3  prio: should  check: no-shall  sev: info
 
-If the text of a functional requirement does not contain the word "shall",
-the system shall report a diagnostic at the heading.
+If the text of an item of a type that the check reads contains none of the
+required verbs, the system shall report a diagnostic at the heading. The
+required verbs are configured as `words` under `[checks.no-shall]`; the
+default is "shall" (ADR-0009). By default the check reads functional
+requirements; the option `types` sets the item types.
+
+```toml
+[checks.no-shall]
+words = ["shall", "muss"]
+```
 
 ## FR-112 EARS patterns
 impl: UC-001.s3  prio: could  check: ears  sev: info
@@ -124,9 +145,24 @@ as semantic tokens (FR-216).
 ## FR-113 User story pattern
 impl: UC-001.s3  prio: should  check: story-pattern  sev: warning
 
-If the text of a user story does not follow "As a …, I want … so that …",
-the system shall report a diagnostic at the heading. If a story has no `ac`
-body field, the system shall report a diagnostic as well.
+If the text of an item of a type that the check reads follows none of the
+story patterns, the system shall report a diagnostic at the heading. A
+pattern is a list of phrases: the text starts with the first phrase and
+contains the others in this order, ignoring case and line breaks. The
+patterns are configured as `patterns` under `[checks.story-pattern]`; the
+default patterns are "As a" or "As an", then "I want", then "so that"
+(ADR-0009). By default the check reads user stories; the option `types`
+sets the item types. Missing acceptance criteria are FR-121.
+
+```toml
+[checks.story-pattern]
+patterns = [
+  ["As a", "I want", "so that"],
+  ["As an", "I want", "so that"],
+  ["Als", "möchte ich", "damit"],
+  ["Als", "möchte ich", "um"],
+]
+```
 
 ## FR-114 Glossary aliases
 impl: UC-001.s3  prio: should  check: glossary-alias  sev: warning
@@ -171,12 +207,15 @@ such as `words` and `allow` for FR-110.
 ## FR-118 Modal verbs
 impl: UC-001.s3  prio: should  check: modal-verb  sev: warning
 
-If the title or text of a functional requirement contains a configured modal
-verb other than "shall", the system shall report a diagnostic at the word
-that suggests "shall". The default list is `should`, `may`, `can`, `could`,
-`might` and `will`; configured `words` under `[checks.modal-verb]` extend
-it. Matching follows the rules of FR-110. This check is separate from FR-110 and
-is configured independently.
+If the title or text of an item of a type that the check reads contains a
+modal verb of the list, the system shall report a diagnostic at the word
+that names the required verbs of FR-111. The built-in list is `should`,
+`may`, `can`, `could`, `might` and `will`; configured `words` under
+`[checks.modal-verb]` extend it, and `builtin = false` switches the
+built-in list off (ADR-0009). By default the check reads functional
+requirements; the option `types` sets the item types. Matching follows the
+rules of FR-110. This check is separate from FR-110 and is configured
+independently.
 
 ## FR-119 Allow lists and inline markers
 impl: UC-001.s3a  prio: should
@@ -197,3 +236,12 @@ found.
 ```markdown
 The Fast Track page shall load the order form. <!-- requimd: allow fast -->
 ```
+
+## FR-121 Acceptance criteria of stories
+impl: UC-001.s3  prio: should  check: acceptance-criteria  sev: warning
+
+If an item of a type that the check reads has no body field with the
+configured name, the system shall report a diagnostic at the heading. The
+options `field` (default `ac`) and `types` (default: user stories) are
+set under `[checks.acceptance-criteria]` (ADR-0009). The field is a body
+field of the item type (FR-005).
