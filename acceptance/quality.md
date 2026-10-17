@@ -128,6 +128,9 @@ extension works without further installation (TC-502).
 - Gap: the scale names only `check`, `fmt` and `lsp`; the other commands
   (`export`, `diff`, `show`, `coverage`, `review`, `init`) are not covered,
   though the project rules ask for no network access at runtime at all.
+- Decision F5 (2026-10-16), ADR-0011 (proposed): NFR-006 covers all
+  commands; the network only for commands invoked and configured for it,
+  with an ADR of their own. TC-605 already runs all commands offline.
 - Code (meter differs): `nfr_006_no_network_crates_in_dependency_tree`
   checks `Cargo.lock` for network libraries instead of running the tests
   offline. `requimd diff` calls the local `git` command.
