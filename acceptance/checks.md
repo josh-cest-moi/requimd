@@ -455,6 +455,8 @@ status of its use case (draft).
   is ignored. The text includes steps, body fields and lower-level headings
   of the item. A configured word without reason reports
   `weak word (no reason given)`.
+- ADR-0009 (proposed): `builtin = false` switches the built-in list off;
+  the option `types` sets the item types (TC-154, TC-155).
 - Automated: `fr_110_weak_words_in_title_and_text`,
   `fr_110_message_states_reason`,
   `fr_110_ignores_code_quotes_ids_and_metadata`,
@@ -549,6 +551,61 @@ When `requimd check` runs after each change.
 Then first "fast" (built-in reason) and "seamless" (the configured reason)
 are reported; with the `allow` entry only "seamless".
 
+### TC-154 Built-in lists switched off
+ver: FR-110, FR-118
+
+Given `FR-901` with the text "The cart opens fast and should be quick.",
+and in `requimd.toml`:
+
+```toml
+[checks.weak-word]
+builtin = false
+words = [{ w = "schnell", why = "nicht messbar; Zeitgrenze angeben" }]
+
+[checks.modal-verb]
+builtin = false
+words = ["soll"]
+```
+
+then `FR-901` with the text "Der Warenkorb soll schnell öffnen."
+
+When `requimd check` runs each time.
+
+Then the English text gets no `weak-word` and no `modal-verb` finding,
+since the built-in lists are off. The German text gets a `weak-word`
+warning for "schnell" with its reason and a `modal-verb` warning for
+"soll".
+
+Code (before ADR-0009 is built): `builtin` is an unknown option, a
+configuration error with exit code 2.
+
+### TC-155 The item types a check reads
+ver: FR-110, FR-111, FR-113, FR-118, FR-121
+
+Given in `requimd.toml`:
+
+```toml
+[checks.weak-word]
+types = ["functional", "rule"]
+
+[checks.no-shall]
+types = ["functional", "rule"]
+
+[checks.story-pattern]
+types = ["test"]
+```
+
+and `BR-901` with the text "The VAT rate is applied fast."
+
+When `requimd check` runs.
+
+Then `BR-901` gets a `weak-word` warning for "fast" and a `no-shall` info;
+`TC-901` gets a `story-pattern` warning, and `US-901` none. The option
+works the same for `modal-verb` and `acceptance-criteria`.
+
+Code (before ADR-0009 is built): `types` is an unknown option, a
+configuration error with exit code 2.
+
 ## Missing "shall" (FR-111)
 
 - Q7 (to confirm): "shall" counts anywhere in the text except code, also
@@ -558,6 +615,8 @@ are reported; with the `allow` entry only "seamless".
 - Code: "shall" is matched as a whole word, ignoring case, in the text after
   the metadata block; the title does not count; quotes and HTML comments
   count, code does not (TC-131).
+- ADR-0009 (proposed): the required verbs are configurable, default
+  "shall"; so are the item types (TC-155, TC-156).
 - Automated: `fr_111_functional_requirement_without_shall` (checks tests).
 
 ### TC-130 A functional requirement without "shall"
@@ -586,6 +645,26 @@ Title and capital "Shall" are not specified (Gap): note what happens.
 Code: the title "The cart shall open" does not count, so `no-shall` is
 reported; "Shall" with a capital counts.
 
+### TC-156 Configured required verbs
+ver: FR-111
+
+Given in `requimd.toml`:
+
+```toml
+[checks.no-shall]
+words = ["shall", "muss"]
+```
+
+and `FR-901` with the text "Das System muss den Warenkorb öffnen.",
+`FR-903` with the text "Der Hinweis erscheint."
+
+When `requimd check` runs.
+
+Then `FR-901` and `FR-902` get no `no-shall` info; `FR-903` gets one.
+
+Code (before ADR-0009 is built): `no-shall` has no option `words`, a
+configuration error with exit code 2.
+
 ## EARS patterns (FR-112)
 
 - Automated: none.
@@ -601,6 +680,8 @@ together with EARS keyword highlighting (FR-216). No tests yet.
 - Code: the field name `ac` is fixed in the code, like the type names of Q7.
   The first paragraph ends at the first blank line; "I want" must be
   followed by a space and "so that" surrounded by spaces.
+- ADR-0009 (proposed): the story patterns and the item types are
+  configurable; a missing `ac` field is FR-121 now (TC-155, TC-157).
 - Automated: `fr_113_user_story_pattern_and_acceptance_criteria` (checks
   tests).
 
@@ -633,15 +714,76 @@ When `requimd check` runs each time.
 Then the first two give no warning; the third gets `story-pattern` (Q7:
 first paragraph).
 
-### TC-134 A story without `ac` field
+### TC-157 Configured story patterns
 ver: FR-113
+
+Given in `requimd.toml`:
+
+```toml
+[checks.story-pattern]
+patterns = [["Als", "möchte ich", "damit"], ["Als", "möchte ich", "um"]]
+```
+
+and `US-901` with each of these texts in turn: "Als Kunde möchte ich eine
+Bestellung wiederholen, damit ich Zeit spare."; "Als Kunde möchte ich
+bestellen, um Zeit zu sparen."; "Kunde möchte bestellen."; and its
+original English text.
+
+When `requimd check` runs each time.
+
+Then the first two get no warning; the third and the English text get a
+`story-pattern` warning, since configured patterns replace the default
+ones.
+
+Code (before ADR-0009 is built): `patterns` is an unknown option, a
+configuration error with exit code 2.
+
+## Acceptance criteria of stories (FR-121)
+
+- ADR-0009 (proposed): split from FR-113, which reported a missing `ac`
+  field under the check ID `story-pattern`; the field name and the item
+  types are configurable.
+- Automated: none named after FR-121 yet;
+  `fr_113_user_story_pattern_and_acceptance_criteria` (checks tests)
+  covers the missing field today.
+
+### TC-134 A story without `ac` field
+ver: FR-121
 
 Given `US-901` without its `ac` field; then also with the text "Reorder
 quickly."
 
 When `requimd check` runs after each change.
 
-Then first one `story-pattern` warning for the missing `ac`; then two.
+Then first an `acceptance-criteria` warning; then also a `story-pattern`
+warning.
+
+Code (before FR-121 is built): both findings have the check ID
+`story-pattern`.
+
+### TC-158 A configured field name for acceptance criteria
+ver: FR-121
+
+Given in `requimd.toml`:
+
+```toml
+[types.story]
+prefix = "US"
+body = ["akz"]
+
+[checks.acceptance-criteria]
+field = "akz"
+```
+
+and `US-901` with `akz:` instead of `ac:`; then with `ac:` again.
+
+When `requimd check` runs each time.
+
+Then first no `acceptance-criteria` warning; then one, since `ac` is no
+body field of the type any more.
+
+Code (before FR-121 is built): `acceptance-criteria` is an unknown check
+ID, a configuration error with exit code 2.
 
 ## Glossary aliases (FR-114)
 
@@ -875,6 +1017,9 @@ exit code 2.
 - Code: `words` entries are strings or `{ w, why }` tables; a reason is
   ignored for modal verbs. The message reads
   `"should": use "shall" for a requirement`.
+- ADR-0009 (proposed): `builtin = false` switches the built-in list off;
+  the message names the required verbs of FR-111; the item types are
+  configurable (TC-154, TC-155).
 - Automated: `fr_118_modal_verbs_in_functional_requirements` (checks tests).
 
 ### TC-147 Modal verbs other than "shall" are reported
