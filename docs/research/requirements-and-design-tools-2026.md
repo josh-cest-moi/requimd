@@ -18,7 +18,7 @@ requimd can take over almost everything enterprise requirements tools build on a
 
 **Out of scope.** Pure product-discovery tools, hardware-only PLM, price comparisons, and hands-on trials of commercial tools.
 
-**Method.** Public sources only. Phase 1 is this broad scan across six areas. It is followed by an owner checkpoint, then deep dives and a synthesis. The notes were compiled on 18 November 2026. They are in [`notes/`](notes/), one file per area.
+**Method.** Public sources only. Phase 1 is this broad scan across six areas. It is followed by an owner checkpoint, then deep dives and a synthesis. The notes were compiled on 18 November 2026. They are in [`notes/`](notes/), one file per area. Phase 2, the deep dives, is [requirements-and-design-tools-deep-dives-2026.md](requirements-and-design-tools-deep-dives-2026.md).
 
 Fit is rated against these constraints:
 
